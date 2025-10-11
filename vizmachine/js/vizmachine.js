@@ -231,7 +231,7 @@ Viz.p.processInstruction = function(){
 			case 10:// R0X (4) - ROTATE Bits of Reg R one Bit to the right, X-times.
 				this.cellsRegister[this.command.parameters[0]].data = Viz.processBitShift(
 						this.cellsRegister[this.command.parameters[0]].data,
-						parameters[1]
+						this.command.parameters[1]
 					);
 				break;
 			case 11:// RXY (1) - JUMP to Instruction in memory-cell with address XY,
