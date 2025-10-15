@@ -1,0 +1,2266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReVizmAsm Editor</title>
+    <script src="monaco/min/vs/loader.js"></script>
+    <style>
+        * {
+            color-scheme: dark;
+        }
+
+        html {
+            background-color: #0F0F10;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #181818;
+        }
+
+        #toolbar {
+            background: #181818;
+            padding: 10px;
+            border-bottom: 1px solid #2B2B2B;
+        }
+
+        #editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 70%;
+        }
+
+        #editor {
+            flex: 1;
+            width: 100%;
+            height: fit-content;
+        }
+
+        #resizer {
+            height: 6px;
+            background: #0f0f0f;
+            cursor: row-resize;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #output {
+            height: 200px;
+            border-top: 1px solid #2B2B2B;
+            padding: 10px;
+            background: #0f0f0f;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        button {
+            margin-right: 10px;
+            padding: 5px 10px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="toolbar">
+        <button id="assembleBtn">Assemble</button>
+        <button id="downloadBtn">Download .vzm</button>
+    </div>
+
+    <div id="editor-container">
+        <div id="editor"></div>
+        <div id="resizer"></div>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        // Load Monaco via jsDelivr to avoid MIME-type blocks seen with unpkg (nosniff response).
+        require.config({ paths: { 'vs': 'monaco/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            // Define the custom language
+            monaco.languages.register({ id: 'revizmasm' });
+
+            // Define custom theme
+            monaco.editor.defineTheme('revizmasmTheme', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'comment', foreground: 'CC9977', fontStyle: 'italic' },
+                    { token: 'label', foreground: '#DCDCAA', fontStyle: 'bold' }, // Labels
+                    { token: 'cell', foreground: '#8DC5E3' }, // Memory cells
+                    { token: 'keyword', foreground: '#569CD6', fontStyle: 'bold' }, // Registers and opcodes
+                    { token: 'keyword.control', foreground: '4DC9B0', fontStyle: 'bold' }, // CONST
+                    { token: 'number', foreground: '#B5CE9D' },
+                    { token: 'constant', foreground: '8DC5E3' },
+                    { token: 'delimiter', foreground: 'DDDDDD' },
+                    { token: 'identifier', foreground: '#9CDCFE' },
+                    { token: 'poi', foreground: 'D7BA7D' }, // Aliases
+                    { token: 'register', foreground: 'C586C0', fontStyle: 'bold' }, // Registers
+                    { token: 'registerAlias', foreground: 'C586C0' }, // Memory cells
+                    { token: 'invalid', foreground: 'FF0000', fontStyle: 'italic' }
+                    //{ token: 'label', foreground: '800080', fontStyle: 'bold' } // Labels with or without @
+                ],
+                colors: {
+                    'editor.background': '#1F1F1F'
+                }
+            });
+
+            // Define syntax highlighting
+            monaco.languages.setMonarchTokensProvider('revizmasm', {
+                tokenizer: {
+                    root: [
+                        // Comments
+                        [/;.*/, 'comment'],
+                        // Labels (support dots in label references)
+                        [/@[\w.]+/, 'label'],
+                        [/\b[\w][.\w]*:/, 'label'],
+                        // Memory cells
+                        [/\[\w+\]/, 'cell'],
+                        // Registers
+                        [/[Rr][0-9A-Fa-f]/, 'register'],
+                        // Aliases
+                        [/#\w+/, 'registerAlias'],
+                        // CONST
+                        [/\bCONST\b/, 'keyword.control'],
+                        // Opcodes
+                        [/\b(LOAD|STORE|MOVE|ADD|ADDI|ADDF|OR|AND|XOR|RSHIFT|JUMP|HALT|WAIT|WRITE)\b/, 'keyword'],
+                        // Numbers
+                        [/\b(0x[0-9A-Fa-f]+|0b[01]+|0d[0-9]+|[0-9A-Fa-f]{1,2})\b/, 'number'],
+                        // Identifiers
+                        [/[A-Za-z]\w*/, 'identifier'],
+                        // Operators
+                        [/:|=/, 'delimiter'],
+                        // Punctuation
+                        [/,/, 'delimiter']
+                    ]
+                }
+            });
+
+            // Configure indentation rules
+            monaco.languages.setLanguageConfiguration('revizmasm', {
+                comments: {
+                    lineComment: ';'
+                },
+                brackets: [
+                    ['[', ']']
+                ],
+                autoClosingPairs: [
+                    { open: '[', close: ']' },
+                    { open: '"', close: '"' }
+                ],
+                surroundingPairs: [
+                    { open: '[', close: ']' },
+                    { open: '"', close: '"' }
+                ],
+                indentationRules: {
+                    // Increase indent after a label definition (ends with :)
+                    increaseIndentPattern: /^\s*[\w.]+:\s*$/,
+                    // Decrease indent after terminal instructions (HALT or unconditional JUMP)
+                    decreaseIndentPattern: /^\s*(HALT|JUMP\s+@[\w.]+)\s*(;.*)?$/
+                },
+                onEnterRules: [
+                    {
+                        // After a label definition, increase indent
+                        beforeText: /^\s*[\w.]+:\s*$/,
+                        action: { indentAction: monaco.languages.IndentAction.Indent }
+                    },
+                    {
+                        // After HALT, decrease indent on next line
+                        beforeText: /^\s*HALT\s*(;.*)?$/,
+                        action: { indentAction: monaco.languages.IndentAction.Outdent }
+                    },
+                    {
+                        // After unconditional JUMP (JUMP @label only), decrease indent on next line
+                        beforeText: /^\s*JUMP\s+@[\w.]+\s*(;.*)?$/,
+                        action: { indentAction: monaco.languages.IndentAction.Outdent }
+                    }
+                ]
+            });
+
+            // Opcode documentation with parameter types
+            const opcodesDocs = {
+                'LOAD': {
+                    signature: 'LOAD Rd, [XY] | LOAD Rd, XY',
+                    doc: 'Load data from memory [XY] into register Rd, or load immediate value XY into register Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['memory', 'immediate', 'constant'], desc: 'Source: memory address or immediate value' }
+                    ]
+                },
+                'STORE': {
+                    signature: 'STORE Rs, [XY]',
+                    doc: 'Store data from register Rs into memory cell at address XY.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Source register' },
+                        { type: ['memory', 'immediate', 'constant'], desc: 'Destination memory address' }
+                    ]
+                },
+                'MOVE': {
+                    signature: 'MOVE Rd, Rs',
+                    doc: 'Move data from register Rs to register Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register' }
+                    ]
+                },
+                'ADD': {
+                    signature: 'ADD Rd, Rs, Rt',
+                    doc: 'Add integers from registers Rs and Rt (Two\'s complement), store result in Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 1' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 2' }
+                    ]
+                },
+                'ADDI': {
+                    signature: 'ADDI Rd, Rs, Rt',
+                    doc: 'Add integers from registers Rs and Rt (Two\'s complement), store result in Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 1' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 2' }
+                    ]
+                },
+                'ADDF': {
+                    signature: 'ADDF Rd, Rs, Rt',
+                    doc: 'Add floating-point values from registers Rs and Rt, store result in Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 1' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 2' }
+                    ]
+                },
+                'OR': {
+                    signature: 'OR Rd, Rs, Rt',
+                    doc: 'Bitwise OR of registers Rs and Rt, store result in Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 1' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 2' }
+                    ]
+                },
+                'AND': {
+                    signature: 'AND Rd, Rs, Rt',
+                    doc: 'Bitwise AND of registers Rs and Rt, store result in Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 1' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 2' }
+                    ]
+                },
+                'XOR': {
+                    signature: 'XOR Rd, Rs, Rt',
+                    doc: 'Bitwise XOR of registers Rs and Rt, store result in Rd.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Destination register' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 1' },
+                        { type: ['register', 'registerAlias'], desc: 'Source register 2' }
+                    ]
+                },
+                'RSHIFT': {
+                    signature: 'RSHIFT Rd, X',
+                    doc: 'Right-shift the bit pattern in register Rd by X bits.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Register to shift' },
+                        { type: ['immediate', 'constant'], desc: 'Number of bits to shift' }
+                    ]
+                },
+                'JUMP': {
+                    signature: 'JUMP Rd, @label | JUMP @label',
+                    doc: 'Jump to address if Rd equals R0 (default R0 if one operand).',
+                    params: [
+                        { type: ['register', 'registerAlias', 'label'], desc: 'Condition register or label' },
+                        { type: ['label'], desc: 'Target label (optional)' }
+                    ]
+                },
+                'HALT': {
+                    signature: 'HALT',
+                    doc: 'Stop execution.',
+                    params: []
+                },
+                'WAIT': {
+                    signature: 'WAIT XYZ',
+                    doc: 'Wait for XYZ milliseconds (hex value).',
+                    params: [
+                        { type: ['immediate', 'constant'], desc: 'Wait time in milliseconds' }
+                    ]
+                },
+                'WRITE': {
+                    signature: 'WRITE Rs, Rt',
+                    doc: 'Write data from register Rs to memory address in register Rt.',
+                    params: [
+                        { type: ['register', 'registerAlias'], desc: 'Source register' },
+                        { type: ['register', 'registerAlias'], desc: 'Address register' }
+                    ]
+                }
+            };
+
+            // Parse code to extract symbols and their documentation
+            function parseSymbols(code) {
+                const lines = code.split('\n');
+                const symbols = {
+                    constants: {},
+                    labels: {},
+                    aliases: {},
+                    memoryAliases: {}
+                };
+                let lineNum = 0;
+                for (let line of lines) {
+                    lineNum++;
+                    const commentMatch = line.match(/;(.*)$/);
+                    const comment = commentMatch ? commentMatch[1].trim() : '';
+                    const codePart = line.split(';')[0].trim();
+
+                    if (!codePart) continue;
+
+                    // CONST declarations
+                    if (codePart.startsWith('CONST ')) {
+                        const match = codePart.match(/CONST\s+(\w+)\s*=\s*(.+)/);
+                        if (match) {
+                            symbols.constants[match[1]] = {
+                                value: match[2].trim(),
+                                doc: comment,
+                                line: lineNum
+                            };
+                        }
+                    }
+                    // Memory aliases [name]: value
+                    else if (codePart.match(/^\[(\w+)\]:\s*(.+)/)) {
+                        const match = codePart.match(/^\[(\w+)\]:\s*(.+)/);
+                        if (match) {
+                            symbols.memoryAliases[match[1]] = {
+                                value: match[2].trim(),
+                                doc: comment,
+                                line: lineNum
+                            };
+                        }
+                    }
+                    // Register aliases #name: Rx
+                    else if (codePart.match(/^#(\w+):\s*(R[0-9A-F])/i)) {
+                        const match = codePart.match(/^#(\w+):\s*(R[0-9A-F])/i);
+                        if (match) {
+                            symbols.aliases[match[1]] = {
+                                register: match[2].toUpperCase(),
+                                doc: comment,
+                                line: lineNum
+                            };
+                        }
+                    }
+                    // Labels (can contain dots like start.loop)
+                    else if (codePart.match(/^([\w.]+):/)) {
+                        const match = codePart.match(/^([\w.]+):/);
+                        if (match && !codePart.startsWith('CONST')) {
+                            symbols.labels[match[1]] = {
+                                doc: comment,
+                                line: lineNum
+                            };
+                        }
+                    }
+                }
+                return symbols;
+            }
+
+            // Analyze context to determine what suggestions are appropriate
+            function analyzeContext(textUntilPosition) {
+                // For most checks, use trimmed version
+                const trimmed = textUntilPosition.trim();
+
+                // Empty line or start - show opcodes, CONST, label definitions, aliases
+                if (!trimmed || trimmed.match(/^\s*$/)) {
+                    return {
+                        context: 'lineStart',
+                        allowedTypes: ['opcode', 'const', 'label', 'alias', 'memoryAlias']
+                    };
+                }
+
+                // After label definition (label:)
+                if (trimmed.endsWith(':')) {
+                    return {
+                        context: 'afterLabel',
+                        allowedTypes: ['opcode']
+                    };
+                }
+
+                // CONST declaration
+                if (trimmed.startsWith('CONST ')) {
+                    if (!trimmed.includes('=')) {
+                        return { context: 'constName', allowedTypes: [] };
+                    }
+                    return { context: 'constValue', allowedTypes: ['immediate', 'constant'] };
+                }
+
+                // Memory alias definition [name]:
+                if (trimmed.match(/^\[(\w+)\]:/)) {
+                    return { context: 'memoryValue', allowedTypes: ['immediate', 'constant'] };
+                }
+
+                // Register alias definition #name:
+                if (trimmed.match(/^#(\w+):/)) {
+                    return { context: 'registerAlias', allowedTypes: ['register'] };
+                }
+
+                // After an opcode - parse parameters (DON'T trim here to preserve trailing space!)
+                const opcodeMatch = textUntilPosition.match(/^\s*(\w+)\s+(.*)$/);
+                console.log('[analyzeContext] opcodeMatch:', opcodeMatch);
+                if (opcodeMatch) {
+                    const opcode = opcodeMatch[1].toUpperCase();
+                    const params = opcodeMatch[2];
+                    console.log('[analyzeContext] opcode:', opcode, 'params:', JSON.stringify(params));
+
+                    if (opcodesDocs[opcode]) {
+                        const expectedParams = opcodesDocs[opcode].params;
+
+                        // Only provide suggestions if:
+                        // 1. Right after opcode with space (params is empty or whitespace only)
+                        // 2. Right after a comma (ends with comma and optional whitespace)
+                        const isValidCompletionPosition =
+                            params.trim() === '' ||  // "JUMP "
+                            params.match(/,\s*$/);    // "JUMP a, " or "JUMP a,"
+
+                        console.log('[analyzeContext] isValidCompletionPosition:', isValidCompletionPosition);
+
+                        if (!isValidCompletionPosition) {
+                            // Invalid position like "JUMP a " (space after param but no comma)
+                            console.log('[analyzeContext] Invalid position, returning unknown');
+                            return { context: 'unknown', allowedTypes: [] };
+                        }
+
+                        // Count actual parameters (split by comma, but handle empty strings)
+                        let currentParam = 0;
+                        if (params.trim() === '') {
+                            // Just after opcode with space, no params yet
+                            currentParam = 0;
+                        } else {
+                            // Count commas to determine which parameter we're on
+                            const commaCount = (params.match(/,/g) || []).length;
+                            currentParam = commaCount;
+                        }
+
+                        if (currentParam < expectedParams.length) {
+                            const paramInfo = expectedParams[currentParam];
+                            const result = {
+                                context: 'parameter',
+                                opcode: opcode,
+                                paramIndex: currentParam,
+                                allowedTypes: paramInfo ? paramInfo.type : [],
+                                paramDesc: paramInfo ? paramInfo.desc : ''
+                            };
+                            console.log('[analyzeContext] Returning:', result);
+                            return result;
+                        }
+                    }
+                }
+
+                return { context: 'unknown', allowedTypes: [] };
+            }
+
+            // Register completion provider
+            monaco.languages.registerCompletionItemProvider('revizmasm', {
+                triggerCharacters: ['R', 'r', '#', '@', '[', ' ', ','],
+                provideCompletionItems: (model, position) => {
+                    console.log('[Completion] Provider invoked at position:', position.lineNumber, position.column);
+                    const code = model.getValue();
+                    const symbols = parseSymbols(code);
+                    const textUntilPosition = model.getValueInRange({
+                        startLineNumber: position.lineNumber,
+                        startColumn: 1,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column
+                    });
+
+                    // Get the full text including any prefix characters
+                    const lineText = model.getLineContent(position.lineNumber);
+                    const textBefore = lineText.substring(0, position.column - 1);
+
+                    // Match the current token including prefix characters (@label, #alias, [mem], Rx, or plain word)
+                    // Note: labels can contain dots, so use [\w.]* for @ prefix
+                    const tokenMatch = textBefore.match(/([@])([\w.]*)$|(#)(\w*)$|(\[)(\w*)$|(\bR)(\w*)$|(\w+)$/);
+                    let currentToken = '';
+                    let prefixChar = '';
+                    let searchTerm = '';
+                    let tokenStartCol = position.column;
+
+                    if (tokenMatch) {
+                        if (tokenMatch[1]) {
+                            // Has @ prefix (labels can contain dots)
+                            prefixChar = tokenMatch[1];
+                            searchTerm = tokenMatch[2] || '';
+                            currentToken = prefixChar + searchTerm;
+                            tokenStartCol = position.column - currentToken.length;
+                        } else if (tokenMatch[3]) {
+                            // Has # prefix (aliases)
+                            prefixChar = tokenMatch[3];
+                            searchTerm = tokenMatch[4] || '';
+                            currentToken = prefixChar + searchTerm;
+                            tokenStartCol = position.column - currentToken.length;
+                        } else if (tokenMatch[5]) {
+                            // Has [ prefix (memory)
+                            prefixChar = tokenMatch[5];
+                            searchTerm = tokenMatch[6] || '';
+                            currentToken = prefixChar + searchTerm;
+                            tokenStartCol = position.column - currentToken.length;
+                        } else if (tokenMatch[7]) {
+                            // Has R prefix (registers)
+                            prefixChar = 'R';
+                            searchTerm = tokenMatch[8] || '';
+                            currentToken = prefixChar + searchTerm;
+                            tokenStartCol = position.column - currentToken.length;
+                        } else if (tokenMatch[9]) {
+                            // Plain word
+                            searchTerm = tokenMatch[9];
+                            currentToken = searchTerm;
+                            tokenStartCol = position.column - currentToken.length;
+                        }
+                    }
+
+                    // For context analysis, use the text up to (but not including) the current token
+                    // If no token was found (e.g., cursor is after space), use all text
+                    const textForContext = currentToken ? textUntilPosition.substring(0, tokenStartCol - 1) : textUntilPosition;
+                    const context = analyzeContext(textForContext);
+
+                    console.log('[Completion] textForContext:', JSON.stringify(textForContext));
+                    console.log('[Completion] context:', context);
+                    console.log('[Completion] currentToken:', JSON.stringify(currentToken), 'prefixChar:', JSON.stringify(prefixChar));
+                    console.log('[Completion] searchTerm:', JSON.stringify(searchTerm));
+
+                    // Determine what prefix filter to apply
+                    const prefixFilter = {
+                        onlyLabels: prefixChar === '@',
+                        onlyAliases: prefixChar === '#',
+                        onlyMemory: prefixChar === '[',
+                        onlyRegisters: prefixChar === 'R'
+                    };
+
+                    const suggestions = [];
+
+                    // Calculate the replacement range
+                    let replaceStartCol = tokenStartCol;
+                    if (prefixChar) {
+                        replaceStartCol = tokenStartCol + 1; // Skip the prefix character
+                    }
+
+                    const range = {
+                        startLineNumber: position.lineNumber,
+                        endLineNumber: position.lineNumber,
+                        startColumn: replaceStartCol,
+                        endColumn: position.column
+                    };
+
+                    // Helper to check if a type is allowed
+                    const isTypeAllowed = (type) => {
+                        if (!context.allowedTypes || !Array.isArray(context.allowedTypes)) {
+                            return false;
+                        }
+                        return context.allowedTypes.includes(type);
+                    };
+
+                    // Filter function - case insensitive search
+                    const matchesSearch = (name) => {
+                        if (!searchTerm) return true;
+                        return name.toLowerCase().startsWith(searchTerm.toLowerCase());
+                    };
+
+                    // If a specific prefix is typed, only show that type IF it's allowed in this context
+                    if (prefixFilter.onlyLabels) {
+                        console.log('[Completion] onlyLabels filter, searchTerm:', JSON.stringify(searchTerm));
+                        // Only show labels if label type is allowed
+                        if (isTypeAllowed('label')) {
+                            console.log('[Completion] Label type is allowed, checking labels:', Object.keys(symbols.labels));
+                            for (const [name, info] of Object.entries(symbols.labels)) {
+                                const matches = matchesSearch(name);
+                                console.log('[Completion] Label:', name, 'matches searchTerm:', matches);
+                                if (matches) {
+                                    suggestions.push({
+                                        label: '@' + name,
+                                        kind: monaco.languages.CompletionItemKind.Reference,
+                                        detail: `Label at line ${info.line}`,
+                                        documentation: `${info.doc || 'Jump target'}\n${context.paramDesc || ''}`,
+                                        insertText: name,
+                                        range: range,
+                                        sortText: '4_label_' + name
+                                    });
+                                }
+                            }
+                        }
+                        return { suggestions };
+                    }
+
+                    if (prefixFilter.onlyAliases) {
+                        // Only show register aliases if registerAlias type is allowed
+                        if (isTypeAllowed('registerAlias')) {
+                            for (const [name, info] of Object.entries(symbols.aliases)) {
+                                if (matchesSearch(name)) {
+                                    suggestions.push({
+                                        label: '#' + name,
+                                        kind: monaco.languages.CompletionItemKind.Variable,
+                                        detail: `→ ${info.register}`,
+                                        documentation: `${info.doc || 'Register alias'}\nMaps to: ${info.register}\n${context.paramDesc || ''}`,
+                                        insertText: name,
+                                        range: range,
+                                        sortText: '2_alias_' + name
+                                    });
+                                }
+                            }
+                        }
+                        return { suggestions };
+                    }
+
+                    if (prefixFilter.onlyMemory) {
+                        // Only show memory aliases if memory type is allowed
+                        if (isTypeAllowed('memory')) {
+                            for (const [name, info] of Object.entries(symbols.memoryAliases)) {
+                                if (matchesSearch(name)) {
+                                    // Check if there's already a closing bracket
+                                    const charAfterCursor = lineText.charAt(position.column - 1);
+                                    const insertClosingBracket = charAfterCursor !== ']';
+
+                                    suggestions.push({
+                                        label: '[' + name + ']',
+                                        kind: monaco.languages.CompletionItemKind.Field,
+                                        detail: `Memory cell = ${info.value}`,
+                                        documentation: `${info.doc || 'Memory alias'}\nLocation: ${info.value}\nLine: ${info.line}\n${context.paramDesc || ''}`,
+                                        insertText: name + (insertClosingBracket ? ']' : ''),
+                                        range: range,
+                                        sortText: '5_mem_' + name
+                                    });
+                                }
+                            }
+                        }
+                        return { suggestions };
+                    }
+
+                    if (prefixFilter.onlyRegisters) {
+                        // Only show registers if register type is allowed
+                        if (isTypeAllowed('register')) {
+                            for (let i = 0; i <= 15; i++) {
+                                const reg = 'R' + i.toString(16).toUpperCase();
+                                const digit = i.toString(16).toUpperCase();
+                                if (matchesSearch(digit)) {
+                                    suggestions.push({
+                                        label: reg,
+                                        kind: monaco.languages.CompletionItemKind.Variable,
+                                        detail: `Register ${reg}`,
+                                        documentation: context.paramDesc || `General-purpose register ${reg}`,
+                                        insertText: digit,
+                                        range: range,
+                                        sortText: '6_reg_' + reg
+                                    });
+                                }
+                            }
+                        }
+                        return { suggestions };
+                    }
+
+                    // Start of line suggestions (no prefix filter)
+                    if (isTypeAllowed('opcode')) {
+                        for (const [op, info] of Object.entries(opcodesDocs)) {
+                            if (matchesSearch(op)) {
+                                suggestions.push({
+                                    label: op,
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    detail: info.signature,
+                                    documentation: info.doc,
+                                    insertText: op + ' ',
+                                    range: range,
+                                    sortText: '0_opcode_' + op,
+                                    command: {
+                                        id: 'editor.action.triggerSuggest',
+                                        title: 'Trigger Suggest'
+                                    }
+                                });
+                            }
+                        }
+                    }
+
+                    if (isTypeAllowed('const')) {
+                        suggestions.push({
+                            label: 'CONST',
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            detail: 'Define a compile-time constant',
+                            documentation: 'CONST name = value',
+                            insertText: 'CONST ${1:name} = ${2:value}',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            range: range,
+                            sortText: '0_const'
+                        });
+                    }
+
+                    // Parameter suggestions based on expected type
+                    if (isTypeAllowed('register')) {
+                        console.log('[Completion] Adding registers');
+                        for (let i = 0; i <= 15; i++) {
+                            const reg = 'R' + i.toString(16).toUpperCase();
+                            if (matchesSearch(reg)) {
+                                suggestions.push({
+                                    label: reg,
+                                    kind: monaco.languages.CompletionItemKind.Variable,
+                                    detail: `Register ${reg}`,
+                                    documentation: context.paramDesc || `General-purpose register ${reg}`,
+                                    insertText: reg,
+                                    range: range,
+                                    sortText: '6_reg_' + reg
+                                });
+                            }
+                        }
+                    }
+
+                    if (isTypeAllowed('registerAlias')) {
+                        for (const [name, info] of Object.entries(symbols.aliases)) {
+                            if (matchesSearch(name)) {
+                                suggestions.push({
+                                    label: '#' + name,
+                                    kind: monaco.languages.CompletionItemKind.Variable,
+                                    detail: `→ ${info.register}`,
+                                    documentation: `${info.doc || 'Register alias'}\nMaps to: ${info.register}\n${context.paramDesc || ''}`,
+                                    insertText: '#' + name,
+                                    range: range,
+                                    sortText: '2_alias_' + name
+                                });
+                            }
+                        }
+                    }
+
+                    if (isTypeAllowed('constant')) {
+                        for (const [name, info] of Object.entries(symbols.constants)) {
+                            if (matchesSearch(name)) {
+                                suggestions.push({
+                                    label: name,
+                                    kind: monaco.languages.CompletionItemKind.Constant,
+                                    detail: `= ${info.value}`,
+                                    documentation: `${info.doc || 'Constant value'}\nValue: ${info.value}\nLine: ${info.line}\n${context.paramDesc || ''}`,
+                                    insertText: name,
+                                    range: range,
+                                    sortText: '3_const_' + name
+                                });
+                            }
+                        }
+                    }
+
+                    if (isTypeAllowed('label')) {
+                        console.log('[Completion] Adding labels, found:', Object.keys(symbols.labels).length);
+                        for (const [name, info] of Object.entries(symbols.labels)) {
+                            if (matchesSearch(name)) {
+                                suggestions.push({
+                                    label: '@' + name,
+                                    kind: monaco.languages.CompletionItemKind.Reference,
+                                    detail: `Label at line ${info.line}`,
+                                    documentation: `${info.doc || 'Jump target'}\n${context.paramDesc || ''}`,
+                                    insertText: '@' + name,
+                                    range: range,
+                                    sortText: '4_label_' + name
+                                });
+                            }
+                        }
+                    }
+
+                    if (isTypeAllowed('memory')) {
+                        for (const [name, info] of Object.entries(symbols.memoryAliases)) {
+                            if (matchesSearch(name)) {
+                                suggestions.push({
+                                    label: '[' + name + ']',
+                                    kind: monaco.languages.CompletionItemKind.Field,
+                                    detail: `Memory cell = ${info.value}`,
+                                    documentation: `${info.doc || 'Memory alias'}\nInitial value: ${info.value}\nLine: ${info.line}\n${context.paramDesc || ''}`,
+                                    insertText: '[' + name + ']',
+                                    range: range,
+                                    sortText: '5_mem_' + name
+                                });
+                            }
+                        }
+                    }
+
+                    if (isTypeAllowed('immediate') && context.context !== 'lineStart') {
+                        // Suggest common immediate value patterns
+                        suggestions.push({
+                            label: '0x00',
+                            kind: monaco.languages.CompletionItemKind.Value,
+                            detail: 'Hex immediate',
+                            documentation: 'Hexadecimal immediate value (0x00-0xFF)\n' + (context.paramDesc || ''),
+                            insertText: '0x${1:00}',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            range: range,
+                            sortText: '6_imm_hex'
+                        });
+                        suggestions.push({
+                            label: '0b00000000',
+                            kind: monaco.languages.CompletionItemKind.Value,
+                            detail: 'Binary immediate',
+                            documentation: 'Binary immediate value (0b00000000-0b11111111)\n' + (context.paramDesc || ''),
+                            insertText: '0b${1:00000000}',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            range: range,
+                            sortText: '6_imm_bin'
+                        });
+                        suggestions.push({
+                            label: '0d0',
+                            kind: monaco.languages.CompletionItemKind.Value,
+                            detail: 'Decimal immediate',
+                            documentation: 'Decimal immediate value (0d0-0d255)\n' + (context.paramDesc || ''),
+                            insertText: '0d${1:0}',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            range: range,
+                            sortText: '6_imm_dec'
+                        });
+                    }
+
+                    console.log('[Completion] Returning', suggestions.length, 'suggestions');
+                    return { suggestions };
+                }
+            });
+
+            // Register signature help provider (parameter hints)
+            monaco.languages.registerSignatureHelpProvider('revizmasm', {
+                signatureHelpTriggerCharacters: [' ', ','],
+                provideSignatureHelp: (model, position) => {
+                    const textUntilPosition = model.getValueInRange({
+                        startLineNumber: position.lineNumber,
+                        startColumn: 1,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column
+                    });
+
+                    const opcodeMatch = textUntilPosition.trim().match(/^\s*(\w+)\s+(.*)$/);
+                    if (!opcodeMatch) return null;
+
+                    const opcode = opcodeMatch[1].toUpperCase();
+                    const params = opcodeMatch[2];
+
+                    if (!opcodesDocs[opcode]) return null;
+
+                    const info = opcodesDocs[opcode];
+                    const paramCount = params.split(',').filter(p => p.trim()).length;
+                    const activeParameter = params.endsWith(',') ? paramCount : Math.max(0, paramCount - 1);
+
+                    const paramLabels = info.params.map((p, i) => {
+                        const types = p.type.join(' | ');
+                        return `param${i + 1}: ${types}`;
+                    });
+
+                    return {
+                        value: {
+                            signatures: [{
+                                label: `${opcode}(${paramLabels.join(', ')})`,
+                                documentation: info.doc,
+                                parameters: info.params.map((p, i) => ({
+                                    label: `param${i + 1}: ${p.type.join(' | ')}`,
+                                    documentation: p.desc
+                                }))
+                            }],
+                            activeSignature: 0,
+                            activeParameter: activeParameter
+                        },
+                        dispose: () => { }
+                    };
+                }
+            });
+
+            // Register hover provider
+            monaco.languages.registerHoverProvider('revizmasm', {
+                provideHover: (model, position) => {
+                    const code = model.getValue();
+                    const symbols = parseSymbols(code);
+                    const lineContent = model.getLineContent(position.lineNumber);
+
+                    // Check for label references with @ (support dots)
+                    const beforePos = lineContent.substring(0, position.column - 1);
+                    const afterPos = lineContent.substring(position.column - 1);
+
+                    const labelMatch = beforePos.match(/@([\w.]*)$/);
+                    if (labelMatch) {
+                        const afterMatch = afterPos.match(/^([\w.]*)/);
+                        const labelName = labelMatch[1] + (afterMatch ? afterMatch[1] : '');
+
+                        if (symbols.labels[labelName]) {
+                            const info = symbols.labels[labelName];
+                            return {
+                                contents: [
+                                    { value: `**Label: ${labelName}**` },
+                                    { value: info.doc ? info.doc : '' },
+                                    { value: `Defined at line ${info.line}` }
+                                ]
+                            };
+                        }
+                    }
+
+                    // For non-prefixed items, use word position
+                    const word = model.getWordAtPosition(position);
+                    if (!word) return null;
+                    const wordText = word.word;
+
+                    // Check for opcodes
+                    if (opcodesDocs[wordText]) {
+                        const info = opcodesDocs[wordText];
+                        return {
+                            contents: [
+                                { value: `**${wordText}**` },
+                                { value: info.signature },
+                                { value: info.doc }
+                            ]
+                        };
+                    }
+
+                    // Check for registers
+                    if (wordText.match(/^R[0-9A-F]$/i)) {
+                        return {
+                            contents: [
+                                { value: `**Register ${wordText.toUpperCase()}**` },
+                                { value: 'General-purpose register' }
+                            ]
+                        };
+                    }
+
+                    // Check for constants
+                    if (symbols.constants[wordText]) {
+                        const info = symbols.constants[wordText];
+                        return {
+                            contents: [
+                                { value: `**Constant: ${wordText}**` },
+                                { value: `Value: \`${info.value}\`` },
+                                { value: info.doc ? info.doc : '' },
+                                { value: `Defined at line ${info.line}` }
+                            ]
+                        };
+                    }
+
+                    // Check for labels (without @ - for label definitions)
+                    // Try to match label with dots at cursor position
+                    const labelDefMatch = beforePos.match(/([\w.]*)$/);
+                    if (labelDefMatch) {
+                        const afterLabelMatch = afterPos.match(/^([\w.]*)/);
+                        const fullLabelName = labelDefMatch[1] + (afterLabelMatch ? afterLabelMatch[1] : '');
+
+                        if (symbols.labels[fullLabelName]) {
+                            const info = symbols.labels[fullLabelName];
+                            return {
+                                contents: [
+                                    { value: `**Label: ${fullLabelName}**` },
+                                    { value: info.doc ? info.doc : '' },
+                                    { value: `Defined at line ${info.line}` }
+                                ]
+                            };
+                        }
+                    }
+
+                    // Check for memory aliases
+                    const memName = wordText.replace(/[\[\]]/g, '');
+                    if (symbols.memoryAliases[memName]) {
+                        const info = symbols.memoryAliases[memName];
+                        return {
+                            contents: [
+                                { value: `**Memory Alias: [${memName}]**` },
+                                { value: `Location: \`${info.value}\`` },
+                                { value: info.doc ? info.doc : '' },
+                                { value: `Defined at line ${info.line}` }
+                            ]
+                        };
+                    }
+
+                    // Check for register aliases
+                    const aliasName = wordText.replace(/^#/, '');
+                    if (symbols.aliases[aliasName]) {
+                        const info = symbols.aliases[aliasName];
+                        return {
+                            contents: [
+                                { value: `**Register Alias: #${aliasName}**` },
+                                { value: `Maps to: \`${info.register}\`` },
+                                { value: info.doc ? info.doc : '' },
+                                { value: `Defined at line ${info.line}` }
+                            ]
+                        };
+                    }
+
+                    return null;
+                }
+            });
+
+            // Register definition provider (Ctrl+Click or F12)
+            monaco.languages.registerDefinitionProvider('revizmasm', {
+                provideDefinition: (model, position) => {
+                    const code = model.getValue();
+                    const symbols = parseSymbols(code);
+                    const lineContent = model.getLineContent(position.lineNumber);
+
+                    // Check for label references (with @) - support dots in label names
+                    const beforePos = lineContent.substring(0, position.column - 1);
+                    const afterPos = lineContent.substring(position.column - 1);
+                    const labelMatch = beforePos.match(/@([\w.]*)$/);
+
+                    if (labelMatch) {
+                        const afterMatch = afterPos.match(/^([\w.]*)/);
+                        const labelName = labelMatch[1] + (afterMatch ? afterMatch[1] : '');
+
+                        if (symbols.labels[labelName]) {
+                            const info = symbols.labels[labelName];
+                            return {
+                                uri: model.uri,
+                                range: {
+                                    startLineNumber: info.line,
+                                    startColumn: 1,
+                                    endLineNumber: info.line,
+                                    endColumn: 1000
+                                }
+                            };
+                        }
+                    }
+
+                    // Check for label definitions (without @) - support dots
+                    // Try to expand selection to include dots
+                    const labelDefMatch = beforePos.match(/([\w.]*)$/);
+                    if (labelDefMatch && !beforePos.endsWith('@') && !beforePos.endsWith('#') && !beforePos.endsWith('[')) {
+                        const afterLabelMatch = afterPos.match(/^([\w.]*)/);
+                        const fullLabelName = labelDefMatch[1] + (afterLabelMatch ? afterLabelMatch[1] : '');
+
+                        if (symbols.labels[fullLabelName]) {
+                            const info = symbols.labels[fullLabelName];
+                            return {
+                                uri: model.uri,
+                                range: {
+                                    startLineNumber: info.line,
+                                    startColumn: 1,
+                                    endLineNumber: info.line,
+                                    endColumn: 1000
+                                }
+                            };
+                        }
+                    }
+
+                    // Check for register alias references (with #)
+                    const aliasMatch = beforePos.match(/#(\w*)$/);
+                    if (aliasMatch) {
+                        const afterMatch = afterPos.match(/^(\w*)/);
+                        const aliasName = aliasMatch[1] + (afterMatch ? afterMatch[1] : '');
+
+                        if (symbols.aliases[aliasName]) {
+                            const info = symbols.aliases[aliasName];
+                            return {
+                                uri: model.uri,
+                                range: {
+                                    startLineNumber: info.line,
+                                    startColumn: 1,
+                                    endLineNumber: info.line,
+                                    endColumn: 1000
+                                }
+                            };
+                        }
+                    }
+
+                    // Check for memory alias references (inside [])
+                    const memMatch = beforePos.match(/\[(\w*)$/);
+                    if (memMatch && afterPos.match(/^(\w*)\]/)) {
+                        const afterMatch = afterPos.match(/^(\w*)/);
+                        const memName = memMatch[1] + (afterMatch ? afterMatch[1] : '');
+
+                        if (symbols.memoryAliases[memName]) {
+                            const info = symbols.memoryAliases[memName];
+                            return {
+                                uri: model.uri,
+                                range: {
+                                    startLineNumber: info.line,
+                                    startColumn: 1,
+                                    endLineNumber: info.line,
+                                    endColumn: 1000
+                                }
+                            };
+                        }
+                    }
+
+                    // Check for constant references (plain word)
+                    const word = model.getWordAtPosition(position);
+                    if (word && symbols.constants[word.word]) {
+                        const info = symbols.constants[word.word];
+                        return {
+                            uri: model.uri,
+                            range: {
+                                startLineNumber: info.line,
+                                startColumn: 1,
+                                endLineNumber: info.line,
+                                endColumn: 1000
+                            }
+                        };
+                    }
+
+                    return null;
+                }
+            });
+
+            // Register references provider (Shift+F12 or right-click "Find All References")
+            monaco.languages.registerReferenceProvider('revizmasm', {
+                provideReferences: (model, position, context) => {
+                    const code = model.getValue();
+                    const lines = code.split('\n');
+                    const symbols = parseSymbols(code);
+                    const lineContent = model.getLineContent(position.lineNumber);
+                    const references = [];
+
+                    // Determine what type of symbol we're looking for
+                    const beforePos = lineContent.substring(0, position.column - 1);
+                    const afterPos = lineContent.substring(position.column - 1);
+
+                    let symbolType = null;
+                    let symbolName = '';
+
+                    // Check for label (with @) - support dots
+                    const labelMatch = beforePos.match(/@([\w.]*)$/);
+                    if (labelMatch) {
+                        const afterMatch = afterPos.match(/^([\w.]*)/);
+                        symbolName = labelMatch[1] + (afterMatch ? afterMatch[1] : '');
+                        if (symbols.labels[symbolName]) {
+                            symbolType = 'label';
+                        }
+                    }
+
+                    // Check for register alias (with #)
+                    if (!symbolType) {
+                        const aliasMatch = beforePos.match(/#(\w*)$/);
+                        if (aliasMatch) {
+                            const afterMatch = afterPos.match(/^(\w*)/);
+                            symbolName = aliasMatch[1] + (afterMatch ? afterMatch[1] : '');
+                            if (symbols.aliases[symbolName]) {
+                                symbolType = 'alias';
+                            }
+                        }
+                    }
+
+                    // Check for memory alias (inside [])
+                    if (!symbolType) {
+                        const memMatch = beforePos.match(/\[(\w*)$/);
+                        if (memMatch && afterPos.match(/^(\w*)\]/)) {
+                            const afterMatch = afterPos.match(/^(\w*)/);
+                            symbolName = memMatch[1] + (afterMatch ? afterMatch[1] : '');
+                            if (symbols.memoryAliases[symbolName]) {
+                                symbolType = 'memory';
+                            }
+                        }
+                    }
+
+                    // Check for constant (plain word)
+                    if (!symbolType) {
+                        const word = model.getWordAtPosition(position);
+                        if (word && symbols.constants[word.word]) {
+                            symbolName = word.word;
+                            symbolType = 'constant';
+                        }
+                    }
+
+                    if (!symbolType) return null;
+
+                    // Escape special regex characters in symbol name (for dots in labels)
+                    const escapedName = symbolName.replace(/\./g, '\\.');
+
+                    // Find all references in the code
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        const lineNum = i + 1;
+
+                        if (symbolType === 'label') {
+                            // Find label definition (name:) - must use word boundary before
+                            const defMatch = new RegExp(`\\b${escapedName}:`).exec(line);
+                            if (defMatch) {
+                                references.push({
+                                    uri: model.uri,
+                                    range: {
+                                        startLineNumber: lineNum,
+                                        startColumn: defMatch.index + 1,
+                                        endLineNumber: lineNum,
+                                        endColumn: defMatch.index + symbolName.length + 1
+                                    }
+                                });
+                            }
+
+                            // Find label references (@name) - word boundary or end of string after
+                            let refMatch;
+                            const refRegex = new RegExp(`@${escapedName}(?=\\b|$)`, 'g');
+                            while ((refMatch = refRegex.exec(line)) !== null) {
+                                references.push({
+                                    uri: model.uri,
+                                    range: {
+                                        startLineNumber: lineNum,
+                                        startColumn: refMatch.index + 2, // Skip @
+                                        endLineNumber: lineNum,
+                                        endColumn: refMatch.index + symbolName.length + 2
+                                    }
+                                });
+                            }
+                        } else if (symbolType === 'alias') {
+                            // Find alias definition (#name: Rx)
+                            const defMatch = new RegExp(`#${escapedName}:`).exec(line);
+                            if (defMatch) {
+                                references.push({
+                                    uri: model.uri,
+                                    range: {
+                                        startLineNumber: lineNum,
+                                        startColumn: defMatch.index + 2, // Skip #
+                                        endLineNumber: lineNum,
+                                        endColumn: defMatch.index + symbolName.length + 2
+                                    }
+                                });
+                            }
+
+                            // Find alias references (#name)
+                            let refMatch;
+                            const refRegex = new RegExp(`#${escapedName}\\b`, 'g');
+                            while ((refMatch = refRegex.exec(line)) !== null) {
+                                references.push({
+                                    uri: model.uri,
+                                    range: {
+                                        startLineNumber: lineNum,
+                                        startColumn: refMatch.index + 2, // Skip #
+                                        endLineNumber: lineNum,
+                                        endColumn: refMatch.index + symbolName.length + 2
+                                    }
+                                });
+                            }
+                        } else if (symbolType === 'memory') {
+                            // Find memory alias definition ([name]:)
+                            const defMatch = new RegExp(`\\[${escapedName}\\]:`).exec(line);
+                            if (defMatch) {
+                                references.push({
+                                    uri: model.uri,
+                                    range: {
+                                        startLineNumber: lineNum,
+                                        startColumn: defMatch.index + 2, // Skip [
+                                        endLineNumber: lineNum,
+                                        endColumn: defMatch.index + symbolName.length + 2
+                                    }
+                                });
+                            }
+
+                            // Find memory references ([name])
+                            let refMatch;
+                            const refRegex = new RegExp(`\\[${escapedName}\\]`, 'g');
+                            while ((refMatch = refRegex.exec(line)) !== null) {
+                                references.push({
+                                    uri: model.uri,
+                                    range: {
+                                        startLineNumber: lineNum,
+                                        startColumn: refMatch.index + 2, // Skip [
+                                        endLineNumber: lineNum,
+                                        endColumn: refMatch.index + symbolName.length + 2
+                                    }
+                                });
+                            }
+                        } else if (symbolType === 'constant') {
+                            // Find constant definition (CONST name =)
+                            const defMatch = new RegExp(`CONST\\s+${escapedName}\\s*=`).exec(line);
+                            if (defMatch) {
+                                const nameStart = defMatch[0].indexOf(symbolName);
+                                references.push({
+                                    uri: model.uri,
+                                    range: {
+                                        startLineNumber: lineNum,
+                                        startColumn: defMatch.index + nameStart + 1,
+                                        endLineNumber: lineNum,
+                                        endColumn: defMatch.index + nameStart + symbolName.length + 1
+                                    }
+                                });
+                            }
+
+                            // Find constant references (word boundary)
+                            let refMatch;
+                            const refRegex = new RegExp(`\\b${escapedName}\\b`, 'g');
+                            while ((refMatch = refRegex.exec(line)) !== null) {
+                                // Skip the definition line
+                                if (!line.includes(`CONST ${symbolName}`)) {
+                                    references.push({
+                                        uri: model.uri,
+                                        range: {
+                                            startLineNumber: lineNum,
+                                            startColumn: refMatch.index + 1,
+                                            endLineNumber: lineNum,
+                                            endColumn: refMatch.index + symbolName.length + 1
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    return references.length > 0 ? references : null;
+                }
+            });
+
+            // Function to save source code as .rvs file
+            function saveSourceFile() {
+                const code = editor.getValue();
+                const blob = new Blob([code], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'program.rvs';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // Create the editor
+            const editor = monaco.editor.create(document.getElementById('editor'), {
+                value: `; VizMachine sample with CONST and pointer aliases
+[a]: 10  ; compile-time pointer alias
+[b]: 0b101010
+[RESULT]: 0
+
+#alias_for_rf: RF ; (that alias available anywhere)
+
+CONST delay = 15 ; Compile-time constants
+CONST maxval = 0x0F
+
+start:
+    #alias_for_r1: R1  ; (btw that alias only available under start because its defined here)
+    LOAD alias_for_r1, 34   ; load immediate value
+    LOAD R2, [a]  ; load from memory cell
+    LOAD R3, [b]
+    LOAD R5, maxval ; load immediate value
+    ADD R6, #alias_for_r1, R2
+    STORE R6, [RESULT]
+    JUMP R1, @skip ; Jump if R1 == R0 (R0 is static)
+    JUMP @start  ; equals to 
+    start.blahblah:
+        JUMP @start
+skip:
+    WAIT delay
+    HALT`,
+                language: 'revizmasm',
+                theme: 'revizmasmTheme',
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: {
+                    other: true,
+                    comments: false,
+                    strings: false
+                },
+                wordBasedSuggestions: 'off',
+                suggest: {
+                    showWords: false, // Don't show words from the document
+                    showSnippets: true, // Don't show built-in snippets
+                    snippetsPreventQuickSuggestions: false,
+                    showMethods: true,
+                    showFunctions: true,
+                    showConstructors: true,
+                    showFields: true,
+                    showVariables: true,
+                    showClasses: false,
+                    showStructs: false,
+                    showInterfaces: false,
+                    showModules: false,
+                    showProperties: true,
+                    showEvents: false,
+                    showOperators: false,
+                    showUnits: false,
+                    showValues: true,
+                    showConstants: true,
+                    showEnums: false,
+                    showEnumMembers: false,
+                    showKeywords: false,
+                    showColors: false,
+                    showFiles: false,
+                    showReferences: true,
+                    showFolders: false,
+                    showTypeParameters: false,
+                    showIssues: true,
+                    showUsers: false
+                },
+                acceptSuggestionOnCommitCharacter: true,
+                acceptSuggestionOnEnter: 'on',
+                tabCompletion: 'on',
+                automaticLayout: true,
+            });
+
+            // Add Ctrl+S keyboard shortcut to save .rvs file
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+                saveSourceFile();
+            });
+
+            const opcodes = {
+                'LOAD1': 1, //  Load from memory
+                'LOAD2': 2, //  Load immediate value
+                // Detect which LOAD variant automatically
+                'STORE': 3,
+                'MOVE': 4,
+                'ADD': 5,
+                'ADDI': 5,
+                'ADDF': 6,
+                'OR': 7,
+                'AND': 8,
+                'XOR': 9,
+                'RSHIFT': 0xA,
+                'JUMP': 0xB,
+                'HALT': 0xC,
+                'WAIT': 0xD,
+                'WRITE': 0xE
+            };
+
+            function parseNum(str) {
+                if (!str) return NaN;
+                str = str.toLowerCase();
+                if (str.startsWith('0x')) return parseInt(str, 16);
+                if (str.startsWith('0b')) return parseInt(str, 2);
+                if (str.startsWith('0d')) return parseInt(str, 10);
+                if (/^[0-9a-f]{1,2}$/.test(str)) return parseInt(str, 16);
+                return NaN;
+            }
+
+            function resolve(str, constants, labels, aliases, localAliases, scopeStack, errors) {
+                if (str.match(/^R[0-9A-F]$/i)) return parseInt(str.slice(1), 16);
+                if (str.startsWith('#')) {
+                    const alias = str.slice(1);
+                    const currentScope = scopeStack[scopeStack.length - 1];
+                    let regStr;
+                    if (currentScope && localAliases[currentScope] && localAliases[currentScope][alias]) {
+                        regStr = localAliases[currentScope][alias];
+                    } else {
+                        regStr = aliases[alias];
+                    }
+                    if (regStr) return parseInt(regStr.slice(1), 16);
+                    errors.push(`Undefined alias: ${str}`);
+                    return 0;
+                }
+                if (str.startsWith('@')) {
+                    const label = str.slice(1);
+                    const addr = labels[label];
+                    if (addr !== undefined) return addr;
+                    errors.push(`Undefined label: ${str}`);
+                    return 0;
+                }
+                if (str.startsWith('[') && str.endsWith(']')) {
+                    const inner = str.slice(1, -1);
+                    if (constants[inner] !== undefined) return constants[inner];
+                    const num = parseNum(inner);
+                    if (!isNaN(num)) return num;
+                    errors.push(`Undefined memory alias: ${str}`);
+                    return 0;
+                }
+                if (constants[str] !== undefined) return constants[str];
+                const num = parseNum(str);
+                if (!isNaN(num)) return num;
+                errors.push(`Invalid operand: ${str}`);
+                return 0;
+            }
+
+            //                function assembleInstruction(code, pc, memory, errors, constants, labels, aliases, localAliases, scopeStack) {
+            //                    const parts = code.split(',').map(s => s.trim());
+            //                    let mnemonic = parts[0];
+            //                    let operands = [];
+            //                    if (mnemonic.includes(' ')) {
+            //                        const mparts = mnemonic.split(' ');
+            //                        mnemonic = mparts[0];
+            //                        operands.push(mparts[1]);
+            //                    }
+            //                    operands = operands.concat(parts.slice(1));
+            //                    const opcode = opcodes[mnemonic];
+            //                    if (!opcode) {
+            //                        errors.push(`Unknown mnemonic: ${mnemonic}`);
+            //                        return;
+            //                    }
+            //                    let byte1, byte2;
+            //                    try {
+            //                        if (mnemonic === 'LOAD') {
+            //                            const dest = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const src = operands[1];
+            //                            if (src.startsWith('[')) {
+            //                                const addr = resolve(src, constants, labels, aliases, localAliases, scopeStack, errors);
+            //                                byte1 = (1 << 4) | dest;
+            //                                byte2 = addr;
+            //                            } else {
+            //                                const val = resolve(src, constants, labels, aliases, localAliases, scopeStack, errors);
+            //                                byte1 = (2 << 4) | dest;
+            //                                byte2 = val;
+            //                            }
+            //                        } else if (mnemonic === 'STORE') {
+            //                            const src = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const dest = resolve(operands[1], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            byte1 = (3 << 4) | src;
+            //                            byte2 = dest;
+            //                        } else if (mnemonic === 'MOVE') {
+            //                            const dest = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const src = resolve(operands[1], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            byte1 = (4 << 4) | dest;
+            //                            byte2 = (0 << 4) | src;
+            //                        } else if (['ADD', 'ADDI', 'ADDF', 'OR', 'AND', 'XOR'].includes(mnemonic)) {
+            //                            const dest = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const src1 = resolve(operands[1], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const src2 = resolve(operands[2], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            byte1 = (opcode << 4) | dest;
+            //                            byte2 = (src1 << 4) | src2;
+            //                        } else if (mnemonic === 'RSHIFT') {
+            //                            const reg = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const times = resolve(operands[1], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            byte1 = (10 << 4) | reg;
+            //                            byte2 = (0 << 4) | times;
+            //                        } else if (mnemonic === 'JUMP') {
+            //                            let reg, addr;
+            //                            if (operands.length === 1) {
+            //                                reg = 0;
+            //                                addr = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            } else {
+            //                                reg = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                                addr = resolve(operands[1], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            }
+            //                            byte1 = (11 << 4) | reg;
+            //                            byte2 = addr;
+            //                        } else if (mnemonic === 'HALT') {
+            //                            byte1 = 0xC0;
+            //                            byte2 = 0x00;
+            //                        } else if (mnemonic === 'WAIT') {
+            //                            const val = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const x = (val >> 8) & 0xF;
+            //                            const yz = val & 0xFF;
+            //                            byte1 = (13 << 4) | x;
+            //                            byte2 = yz;
+            //                        } else if (mnemonic === 'WRITE') {
+            //                            const r = resolve(operands[0], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            const t = resolve(operands[1], constants, labels, aliases, localAliases, scopeStack, errors);
+            //                            byte1 = (14 << 4) | r;
+            //                            byte2 = (0 << 4) | t;
+            //                        }
+            //                        memory[pc] = byte1;
+            //                        memory[pc + 1] = byte2;
+            //                    } catch (e) {
+            //                        errors.push(e.message);
+            //                    }
+            //                }
+            //                
+            //                function assemble(code) {
+            //                    const lines = code.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith(';'));
+            //                    let pc = 0;
+            //                    const labels = {};
+            //                    const constants = {};
+            //                    const aliases = {};
+            //                    const localAliases = {};
+            //                    const scopeStack = [];
+            //                    // First pass
+            //                    for (let line of lines) {
+            //                        const commentIndex = line.indexOf(';');
+            //                        const codeline = commentIndex >= 0 ? line.slice(0, commentIndex).trim() : line;
+            //                        if (codeline.includes(':')) {
+            //                            const parts = codeline.split(':');
+            //                            const label = parts[0].trim();
+            //                            if (label.startsWith('[')) {
+            //                                const alias = label.slice(1, -1);
+            //                                const valueStr = parts[1].trim();
+            //                                constants[alias] = parseNum(valueStr);
+            //                            } else if (label.startsWith('#')) {
+            //                                const alias = label.slice(1);
+            //                                const reg = parts[1].trim();
+            //                                const currentScope = scopeStack[scopeStack.length - 1];
+            //                                if (currentScope) {
+            //                                    if (!localAliases[currentScope]) localAliases[currentScope] = {};
+            //                                    localAliases[currentScope][alias] = reg;
+            //                                } else {
+            //                                    aliases[alias] = reg;
+            //                                }
+            //                            } else if (codeline.startsWith('CONST ')) {
+            //                                const constLine = codeline.replace('CONST ', '');
+            //                                const eqIndex = constLine.indexOf('=');
+            //                                const name = constLine.slice(0, eqIndex).trim();
+            //                                const valStr = constLine.slice(eqIndex + 1).trim();
+            //                                constants[name] = parseNum(valStr);
+            //                            } else {
+            //                                // label
+            //                                labels[label] = pc;
+            //                                scopeStack.push(label);
+            //                                if (parts[1].trim()) {
+            //                                    pc += 2;
+            //                                }
+            //                            }
+            //                        } else {
+            //                            // instruction
+            //                            pc += 2;
+            //                        }
+            //                    }
+            //                    // Second pass
+            //                    pc = 0;
+            //                    const memory = new Uint8Array(256);
+            //                    const errors = [];
+            //                    scopeStack.length = 0; // reset
+            //                    for (let line of lines) {
+            //                        const commentIndex = line.indexOf(';');
+            //                        const codeline = commentIndex >= 0 ? line.slice(0, commentIndex).trim() : line;
+            //                        if (codeline.includes(':')) {
+            //                            const parts = codeline.split(':');
+            //                            const label = parts[0].trim();
+            //                            if (!label.startsWith('[') && !label.startsWith('#') && !codeline.startsWith('CONST ')) {
+            //                                scopeStack.push(label);
+            //                                if (parts[1].trim()) {
+            //                                    const instr = parts[1].trim();
+            //                                    assembleInstruction(instr, pc, memory, errors, constants, labels, aliases, localAliases, scopeStack);
+            //                                    pc += 2;
+            //                                }
+            //                            }
+            //                        } else {
+            //                            // instruction
+            //                            assembleInstruction(codeline, pc, memory, errors, constants, labels, aliases, localAliases, scopeStack);
+            //                            pc += 2;
+            //                        }
+            //                    }
+            //                    if (errors.length) {
+            //                        return { success: false, errors };
+            //                    } else {
+            //                        const hex = Array.from(memory).map(b => b.toString(16).padStart(2, '0')).join('');
+            //                        return { success: true, hex };
+            //                    }
+            //                }
+
+            // Buttons
+            document.getElementById('assembleBtn').addEventListener('click', () => {
+                const code = editor.getValue();
+                const result = compile(code, "stdout"); // Use the new compile function
+
+                if (result.success) {
+                    document.getElementById('output').textContent = 'Assembled successfully. Hex length: ' + result.output.length;
+                    window.assembledHex = result.output; // note: .output, not .hex
+                } else {
+                    document.getElementById('output').textContent = result.errors.join('\n');
+                    window.assembledHex = null;
+                }
+            });
+
+            document.getElementById('downloadBtn').addEventListener('click', () => {
+                if (window.assembledHex) {
+                    const blob = new Blob([window.assembledHex], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'output.vzm';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } else {
+                    alert('No assembled code to download. Assemble first.');
+                }
+            });
+
+            // Add validation function
+            function validateCode(model) {
+                const code = model.getValue();
+                const lines = code.split('\n');
+                const markers = [];
+                const constants = {};
+                const labels = {};
+                const aliases = {};
+                const memoryAliases = {};
+
+                // First pass: collect definitions
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const commentIndex = line.indexOf(';');
+                    const codePart = commentIndex >= 0 ? line.slice(0, commentIndex).trim() : line.trim();
+
+                    if (!codePart) continue;
+
+                    // CONST declarations
+                    if (codePart.startsWith('CONST ')) {
+                        const match = codePart.match(/CONST\s+(\w+)\s*=\s*(.+)/);
+                        if (match) {
+                            constants[match[1]] = true;
+                        } else {
+                            markers.push({
+                                severity: monaco.MarkerSeverity.Error,
+                                startLineNumber: i + 1,
+                                startColumn: 1,
+                                endLineNumber: i + 1,
+                                endColumn: line.length + 1,
+                                message: 'Invalid CONST syntax. Expected: CONST name = value'
+                            });
+                        }
+                    }
+                    // Memory aliases
+                    else if (codePart.match(/^\[(\w+)\]:\s*(.+)/)) {
+                        const match = codePart.match(/^\[(\w+)\]:\s*(.+)/);
+                        if (match) {
+                            memoryAliases[match[1]] = true;
+                        }
+                    }
+                    // Register aliases
+                    else if (codePart.match(/^#(\w+):\s*(R[0-9A-F])/i)) {
+                        const match = codePart.match(/^#(\w+):\s*(R[0-9A-F])/i);
+                        if (match) {
+                            aliases[match[1]] = true;
+                        } else if (codePart.match(/^#(\w+):/)) {
+                            markers.push({
+                                severity: monaco.MarkerSeverity.Error,
+                                startLineNumber: i + 1,
+                                startColumn: 1,
+                                endLineNumber: i + 1,
+                                endColumn: line.length + 1,
+                                message: 'Invalid register alias. Must map to R0-RF'
+                            });
+                        }
+                    }
+                    // Labels (must not start with [ or # or CONST)
+                    else if (codePart.match(/^([\w.]+):/) && !codePart.startsWith('[') && !codePart.startsWith('#')) {
+                        const match = codePart.match(/^([\w.]+):/);
+                        if (match) {
+                            labels[match[1]] = true;
+                        }
+                    }
+                }
+
+                // Second pass: validate instructions
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const commentIndex = line.indexOf(';');
+                    const codePart = commentIndex >= 0 ? line.slice(0, commentIndex).trim() : line.trim();
+
+                    // Skip empty lines, CONST declarations, memory aliases, register aliases, and label-only lines
+                    if (!codePart) continue;
+                    if (codePart.startsWith('CONST ')) continue;
+                    if (codePart.match(/^\[(\w+)\]:/)) continue;
+                    if (codePart.match(/^#(\w+):/)) continue;
+                    if (codePart.match(/^[\w.]+:\s*$/)) continue; // Label with no instruction
+
+                    // Extract instruction after label if present
+                    let instruction = codePart;
+                    if (codePart.includes(':') && !codePart.startsWith('[') && !codePart.startsWith('#')) {
+                        const parts = codePart.split(':');
+                        instruction = parts[1].trim();
+                        if (!instruction) continue;
+                    }
+
+                    // Parse instruction
+                    const parts = instruction.split(/[\s,]+/).filter(p => p);
+                    if (parts.length === 0) continue;
+
+                    const opcode = parts[0].toUpperCase();
+                    const operands = parts.slice(1);
+
+                    // Check if opcode is valid
+                    if (!opcodesDocs[opcode]) {
+                        const opcodeMatch = line.match(new RegExp('\\b' + parts[0] + '\\b'));
+                        const startCol = opcodeMatch ? line.indexOf(opcodeMatch[0]) + 1 : 1;
+                        markers.push({
+                            severity: monaco.MarkerSeverity.Error,
+                            startLineNumber: i + 1,
+                            startColumn: startCol,
+                            endLineNumber: i + 1,
+                            endColumn: startCol + parts[0].length,
+                            message: `Unknown opcode: ${parts[0]}`
+                        });
+                        continue;
+                    }
+
+                    // Validate operands
+                    for (const operand of operands) {
+                        // Skip registers
+                        if (operand.match(/^R[0-9A-F]$/i)) continue;
+
+                        // Check label references
+                        if (operand.startsWith('@')) {
+                            const labelName = operand.slice(1);
+                            if (!labels[labelName]) {
+                                const opMatch = line.indexOf(operand);
+                                markers.push({
+                                    severity: monaco.MarkerSeverity.Error,
+                                    startLineNumber: i + 1,
+                                    startColumn: opMatch + 1,
+                                    endLineNumber: i + 1,
+                                    endColumn: opMatch + operand.length + 1,
+                                    message: `Undefined label: ${operand}`
+                                });
+                            }
+                        }
+                        // Check register aliases
+                        else if (operand.startsWith('#')) {
+                            const aliasName = operand.slice(1);
+                            if (!aliases[aliasName]) {
+                                const opMatch = line.indexOf(operand);
+                                markers.push({
+                                    severity: monaco.MarkerSeverity.Error,
+                                    startLineNumber: i + 1,
+                                    startColumn: opMatch + 1,
+                                    endLineNumber: i + 1,
+                                    endColumn: opMatch + operand.length + 1,
+                                    message: `Undefined register alias: ${operand}`
+                                });
+                            }
+                        }
+                        // Check memory references
+                        else if (operand.startsWith('[') && operand.endsWith(']')) {
+                            const memName = operand.slice(1, -1);
+                            if (!memoryAliases[memName] && isNaN(parseNum(memName))) {
+                                const opMatch = line.indexOf(operand);
+                                markers.push({
+                                    severity: monaco.MarkerSeverity.Error,
+                                    startLineNumber: i + 1,
+                                    startColumn: opMatch + 1,
+                                    endLineNumber: i + 1,
+                                    endColumn: opMatch + operand.length + 1,
+                                    message: `Undefined memory alias: ${operand}`
+                                });
+                            }
+                        }
+                        // Check constants
+                        else if (!operand.match(/^(0x[0-9A-Fa-f]+|0b[01]+|0d[0-9]+|[0-9A-Fa-f]{1,2})$/)) {
+                            if (!constants[operand]) {
+                                const opMatch = line.indexOf(operand);
+                                if (opMatch >= 0) {
+                                    markers.push({
+                                        severity: monaco.MarkerSeverity.Warning,
+                                        startLineNumber: i + 1,
+                                        startColumn: opMatch + 1,
+                                        endLineNumber: i + 1,
+                                        endColumn: opMatch + operand.length + 1,
+                                        message: `Undefined identifier: ${operand}`
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                monaco.editor.setModelMarkers(model, 'revizmasm', markers);
+            }
+
+            // Validate on content change
+            editor.onDidChangeModelContent(() => {
+                validateCode(editor.getModel());
+            });
+
+            // Initial validation
+            validateCode(editor.getModel());
+
+            // Resizer logic
+            (function () {
+                const resizer = document.getElementById('resizer');
+                const editorDiv = document.getElementById('editor');
+                const outputDiv = document.getElementById('output');
+                const container = document.getElementById('editor-container');
+                let dragging = false;
+                let startY = 0;
+                let startEditorHeight = 0;
+
+                resizer.addEventListener('mousedown', e => {
+                    dragging = true;
+                    startY = e.clientY;
+                    startEditorHeight = editorDiv.getBoundingClientRect().height;
+                    document.body.style.userSelect = 'none';
+                });
+
+                window.addEventListener('mousemove', e => {
+                    if (!dragging) return;
+                    const dy = e.clientY - startY;
+                    const newHeight = startEditorHeight + dy;
+                    const containerHeight = container.getBoundingClientRect().height;
+                    const minEditorHeight = 100;
+                    const minOutputHeight = 60;
+                    const maxEditorHeight = containerHeight - minOutputHeight - resizer.offsetHeight;
+                    const finalHeight = Math.max(minEditorHeight, Math.min(maxEditorHeight, newHeight));
+                    editorDiv.style.flex = 'none';
+                    editorDiv.style.height = finalHeight + 'px';
+                    window.editor?.layout(); // tell Monaco to re-layout after resize
+                });
+
+                window.addEventListener('mouseup', () => {
+                    dragging = false;
+                    document.body.style.userSelect = '';
+                });
+            })();
+        });
+    </script>
+
+    <script>
+        // OPCODES map
+        const OPCODES = {
+            LOAD_1: 0x1,
+            LOAD_2: 0x2,
+            STORE: 0x3,
+            MOVE: 0x4,
+            ADD: 0x5,
+            ADDI: 0x5,
+            ADDF: 0x6,
+            OR: 0x7,
+            AND: 0x8,
+            XOR: 0x9,
+            RSHIFT: 0xA,
+            JUMP: 0xB,
+            HALT: 0xC,
+            WAIT: 0xD,
+            WRITE: 0xE,
+        };
+
+        // Parse numeric with error fallback
+        function parseNumeric(value, lineNum, errors) {
+            value = value.trim();
+            try {
+                if (value.startsWith('0x')) {
+                    return parseInt(value, 16);
+                } else if (value.startsWith('0b')) {
+                    return parseInt(value.substring(2), 2);
+                } else if (value.startsWith('0o')) {
+                    return parseInt(value.substring(2), 8);
+                } else if (value.startsWith('0d')) {
+                    return parseInt(value.substring(2), 10);
+                } else {
+                    return parseInt(value, 16);
+                }
+            } catch (e) {
+                errors.push(`Line ${lineNum}: Invalid numeric value: "${value}"`);
+                return NaN; // signal invalid
+            }
+        }
+
+        function isNumeric(value, lineNum, errors) {
+            const num = parseNumeric(value, lineNum, errors);
+            return !isNaN(num);
+        }
+
+        // Parse single line — no throws
+        function parseLine(line, lineNum, errors) {
+            console.log("Parsing line:", line);
+            line = line.trim();
+            if (!line || line.startsWith(';')) {
+                return null;
+            }
+
+            const uncomment = line.split(';')[0].trim();
+            if (!uncomment) return null;
+
+            try {
+                if (uncomment.startsWith('[') && uncomment.includes(']:')) {
+                    const closeIdx = uncomment.indexOf(']');
+                    if (closeIdx === -1) throw new Error("Malformed memory init");
+                    const label = uncomment.substring(1, closeIdx);
+                    const valuePart = uncomment.substring(closeIdx + 2).trim();
+                    return { type: 'memory_init', label, value: valuePart, lineNum };
+                }
+
+                if (uncomment.startsWith('#') && uncomment.includes(':')) {
+                    const colonIdx = uncomment.indexOf(':');
+                    const name = uncomment.substring(1, colonIdx);
+                    const target = uncomment.substring(colonIdx + 1).trim();
+                    return { type: 'alias', name, target, lineNum };
+                }
+
+                if (uncomment.startsWith('CONST ')) {
+                    const rest = uncomment.substring(6).trim();
+                    const eqIdx = rest.indexOf('=');
+                    if (eqIdx === -1) {
+                        errors.push(`Line ${lineNum}: Invalid CONST syntax (missing '=')`);
+                        return null;
+                    }
+                    const name = rest.substring(0, eqIdx).trim();
+                    const value = rest.substring(eqIdx + 1).trim();
+                    return { type: 'const', name, value, lineNum };
+                }
+
+                if (uncomment.endsWith(':')) {
+                    return { type: 'label', name: uncomment.slice(0, -1).trim(), lineNum };
+                }
+
+                const _parts = uncomment.split(/[\s]+/);
+                if (_parts.length === 0) return null;
+                const opcode = _parts[0].toUpperCase();
+                if (opcode === 'ADD'){
+                    console.log(_parts);
+                }
+                const parts = _parts.length > 1 ? [opcode, _parts.slice(1).join(' ')] : [opcode];
+                const operands = parts.length > 1 ? parts[1].split(',').map(op => op.trim()) : [];
+                
+                if (opcode === 'ADD'){
+                    console.log(operands);
+                }
+                return { type: 'instruction', opcode, operands, lineNum };
+            } catch (e) {
+                errors.push(`Line ${lineNum}: Parse error: ${e.message}`);
+                return null;
+            }
+        }
+
+        function parseCode(code, errors) {
+            const lines = code.trim().split('\n');
+            const parsedLines = [];
+            for (let i = 0; i < lines.length; i++) {
+                const pline = parseLine(lines[i], i + 1, errors);
+                if (pline) parsedLines.push(pline);
+            }
+            return parsedLines;
+        }
+
+        class MachineInstruction {
+            constructor(opcode, operands) {
+                this.opcode = opcode;
+                this.operands = operands;
+            }
+
+            compile() {
+                const [a, b, c] = this.operands;
+                return `${this.opcode.toString(16).toUpperCase()}${a.toString(16).toUpperCase()}${b.toString(16).toUpperCase()}${c.toString(16).toUpperCase()}`;
+            }
+        }
+
+        function assemble(parsedLines, errors) {
+            const labels = {};
+            const constants = {};
+            const aliases = {};
+            const pointers = {};
+
+            // First pass: collect symbols
+            let address = 0;
+            for (const pline of parsedLines) {
+                const { type, lineNum } = pline;
+                if (type === 'memory_init') {
+                    const val = parseNumeric(pline.value, lineNum, errors);
+                    if (!isNaN(val)) pointers[pline.label] = val;
+                } else if (type === 'alias') {
+                    aliases[pline.name] = pline.target;
+                } else if (type === 'const') {
+                    const val = parseNumeric(pline.value, lineNum, errors);
+                    if (!isNaN(val)) constants[pline.name] = val;
+                } else if (type === 'label') {
+                    labels[pline.name] = address;
+                } else if (type === 'instruction') {
+                    address += 2;
+                }
+            }
+
+            // Second pass: generate instructions
+            const machineCode = [];
+            for (const pline of parsedLines) {
+                if (pline.type !== 'instruction') continue;
+
+                const { opcode: opcodeStr, operands, lineNum } = pline;
+                let resolvedOpcode = opcodeStr;
+                let resolvedOperands = [...operands];
+
+                // Resolve aliases
+                resolvedOperands = resolvedOperands.map(op => {
+                    if (op.startsWith('#') && aliases[op.slice(1)] !== undefined) {
+                        return aliases[op.slice(1)];
+                    }
+                    return op;
+                });
+
+                // Handle pseudo-opcodes
+                if (resolvedOpcode === 'LOAD') {
+                    if (resolvedOperands.length !== 2) {
+                        errors.push(`Line ${lineNum}: LOAD requires 2 operands`);
+                        continue;
+                    }
+                    const valueStr = resolvedOperands[1];
+                    resolvedOpcode = (valueStr.startsWith('[') && valueStr.endsWith(']')) ? 'LOAD_1' : 'LOAD_2';
+                }
+
+                if (resolvedOpcode === 'JUMP') {
+                    if (resolvedOperands.length === 1) {
+                        resolvedOperands = ['R0', resolvedOperands[0]];
+                    } else if (resolvedOperands.length !== 2) {
+                        errors.push(`Line ${lineNum}: JUMP requires 1 or 2 operands`);
+                        continue;
+                    }
+                }
+
+                if (!(resolvedOpcode in OPCODES)) {
+                    errors.push(`Line ${lineNum}: Unknown opcode: ${resolvedOpcode}`);
+                    continue;
+                }
+
+                const opcode = OPCODES[resolvedOpcode];
+                let op1 = 0, op2 = 0, op3 = 0;
+                let valid = true;
+
+                const [rStr, sStr, tStr] = resolvedOperands;
+
+                const parseReg = (reg, ln) => {
+                    if (!reg || !reg.startsWith('R')) {
+                        errors.push(`Line ${ln}: Expected register like R0–RF, got "${reg}"`);
+                        valid = false;
+                        return 0;
+                    }
+                    const numPart = reg.slice(1);
+                    const val = parseNumeric(numPart, ln, errors);
+                    if (isNaN(val)) {
+                        valid = false;
+                        return 0;
+                    }
+                    return val;
+                };
+
+                if (resolvedOpcode === 'STORE' || resolvedOpcode === 'JUMP') {
+                    if (resolvedOperands.length !== 2) {
+                        errors.push(`Line ${lineNum}: ${resolvedOpcode} requires 2 operands`);
+                        continue;
+                    }
+                    op1 = parseReg(rStr, lineNum);
+                    let addr = null;
+                    const addrStr = sStr;
+                    if (addrStr.startsWith('[') && addrStr.endsWith(']')) {
+                        const inner = addrStr.slice(1, -1);
+                        if (pointers[inner] !== undefined) {
+                            addr = pointers[inner];
+                        } else if (isNumeric(inner, lineNum, [])) {
+                            addr = parseNumeric(inner, lineNum, errors);
+                        } else {
+                            errors.push(`Line ${lineNum}: Unknown pointer label: ${inner}`);
+                            valid = false;
+                        }
+                    } else if (addrStr.startsWith('@')) {
+                        const label = addrStr.slice(1);
+                        if (labels[label] !== undefined) {
+                            addr = labels[label];
+                        } else {
+                            errors.push(`Line ${lineNum}: Unknown label: ${label}`);
+                            valid = false;
+                        }
+                    } else if (constants[addrStr] !== undefined) {
+                        addr = constants[addrStr];
+                    } else {
+                        addr = parseNumeric(addrStr, lineNum, errors);
+                        if (isNaN(addr)) valid = false;
+                    }
+                    if (valid && addr !== null) {
+                        op2 = (addr >> 4) & 0xF;
+                        op3 = addr & 0xF;
+                    }
+                }
+                else if (resolvedOpcode === 'LOAD_1') {
+                    if (resolvedOperands.length !== 2) {
+                        errors.push(`Line ${lineNum}: LOAD_1 requires 2 operands`);
+                        continue;
+                    }
+                    op1 = parseReg(rStr, lineNum);
+                    const valueStr = sStr;
+                    if (!(valueStr.startsWith('[') && valueStr.endsWith(']'))) {
+                        errors.push(`Line ${lineNum}: LOAD_1 expects memory reference like [label]`);
+                        valid = false;
+                    } else {
+                        const inner = valueStr.slice(1, -1);
+                        let value;
+                        if (pointers[inner] !== undefined) {
+                            value = pointers[inner];
+                        } else if (isNumeric(inner, lineNum, [])) {
+                            value = parseNumeric(inner, lineNum, errors);
+                        } else {
+                            errors.push(`Line ${lineNum}: Unknown pointer label: ${inner}`);
+                            valid = false;
+                        }
+                        if (valid) {
+                            op2 = (value >> 4) & 0xF;
+                            op3 = value & 0xF;
+                        }
+                    }
+                }
+                else if (resolvedOpcode === 'LOAD_2') {
+                    if (resolvedOperands.length !== 2) {
+                        errors.push(`Line ${lineNum}: LOAD_2 requires 2 operands`);
+                        continue;
+                    }
+                    op1 = parseReg(rStr, lineNum);
+                    let value;
+                    const valueStr = sStr;
+                    if (constants[valueStr] !== undefined) {
+                        value = constants[valueStr];
+                    } else {
+                        value = parseNumeric(valueStr, lineNum, errors);
+                        if (isNaN(value)) valid = false;
+                    }
+                    if (valid) {
+                        op2 = (value >> 4) & 0xF;
+                        op3 = value & 0xF;
+                    }
+                }
+                else if (['ADD', 'ADDI', 'ADDF', 'OR', 'AND', 'XOR'].includes(resolvedOpcode)) {
+                    if (resolvedOperands.length !== 3) {
+                        console.log(resolvedOperands);
+                        errors.push(`Line ${lineNum}: ${resolvedOpcode} requires 3 operands`);
+                        continue;
+                    }
+                    op1 = parseReg(rStr, lineNum);
+                    op2 = parseReg(sStr, lineNum);
+                    op3 = parseReg(tStr, lineNum);
+                }
+                else if (resolvedOpcode === 'MOVE') {
+                    if (resolvedOperands.length !== 2) {
+                        errors.push(`Line ${lineNum}: MOVE requires 2 operands`);
+                        continue;
+                    }
+                    op2 = parseReg(rStr, lineNum);
+                    op3 = parseReg(sStr, lineNum);
+                }
+                else if (resolvedOpcode === 'WAIT') {
+                    if (resolvedOperands.length !== 1) {
+                        errors.push(`Line ${lineNum}: WAIT requires 1 operand`);
+                        continue;
+                    }
+                    let value = constants[rStr] !== undefined ? constants[rStr] : parseNumeric(rStr, lineNum, errors);
+                    if (isNaN(value)) {
+                        valid = false;
+                    }
+                    if (valid) {
+                        op1 = (value >> 8) & 0xF;
+                        op2 = (value >> 4) & 0xF;
+                        op3 = value & 0xF;
+                    }
+                }
+                else if (resolvedOpcode === 'HALT') {
+                    // all zero — no action needed
+                }
+                else if (resolvedOpcode === 'RSHIFT') {
+                    if (resolvedOperands.length !== 2) {
+                        errors.push(`Line ${lineNum}: RSHIFT requires 2 operands`);
+                        continue;
+                    }
+                    op1 = parseReg(rStr, lineNum);
+                    const xVal = parseNumeric(sStr, lineNum, errors);
+                    if (isNaN(xVal)) {
+                        valid = false;
+                    } else {
+                        op3 = xVal;
+                    }
+                }
+                else if (resolvedOpcode === 'WRITE') {
+                    if (resolvedOperands.length !== 3) {
+                        errors.push(`Line ${lineNum}: WRITE requires 3 operands`);
+                        continue;
+                    }
+                    op1 = parseReg(rStr, lineNum);
+                    op2 = parseReg(sStr, lineNum);
+                    op3 = parseReg(tStr, lineNum);
+                }
+                else {
+                    errors.push(`Line ${lineNum}: Unhandled opcode: ${resolvedOpcode}`);
+                    continue;
+                }
+
+                if (valid) {
+                    // Clamp operands to 4-bit (0–15)
+                    op1 &= 0xF;
+                    op2 &= 0xF;
+                    op3 &= 0xF;
+                    machineCode.push(new MachineInstruction(opcode, [op1, op2, op3]));
+                }
+            }
+
+            return machineCode;
+        }
+
+        // Main compile function — returns { success, output?, errors[] }
+        function compile(code, out = "stdout") {
+            const errors = [];
+            const parsed = parseCode(code, errors);
+            const machineCode = assemble(parsed, errors);
+
+            if (errors.length > 0) {
+                return { success: false, errors };
+            }
+
+            let result = "";
+            for (const instr of machineCode) {
+                result += instr.compile();
+            }
+
+            if (out === "stdout") {
+                console.log(result);
+            }
+
+            return { success: true, output: result };
+        }
+    </script>
+</body>
+
+</html>

@@ -12,7 +12,7 @@ See LICENSE.txt
 -->
 <html>
 	<head>
-		<title>VizMachine</title>
+		<title>Re-VizMachine</title>
 		<meta charset="utf-8">
 		<link rel="stylesheet" href="css/bootstrap.min.css">
 		<link rel="stylesheet" href="css/bootstrap-theme.min.css">
@@ -22,7 +22,7 @@ See LICENSE.txt
 
 		<div id="viz" data-ng-app="vizMachine" data-ng-controller="vizController as vctrl">
 			<div id="header">
-				<h1>VizMachine&nbsp;<small>V{{vctrl.version}}</small></h1>
+				<h1>Re-VizMachine&nbsp;<small>V{{vctrl.version}}</small></h1>
 			</div>
 			<!-- TAB PANEL -->
 			<div role="tabpanel">
@@ -33,6 +33,7 @@ See LICENSE.txt
 					<li role="presentation"><a class="tabu" href="#vizOpcodes" aria-controls="vizOpcodes" role="tab" data-toggle="tab">Opcodes</a></li>
 					<li role="presentation"><a class="tabu" href="#vizMachine" aria-controls="vizMachine" role="tab" data-toggle="tab">Machine</a></li>
 					<li role="presentation"><a class="tabu" href="#vizAssembler" aria-controls="vizAssembler" role="tab" data-toggle="tab">Program</a></li>
+					<li role="presentation"><a class="tabu" href="#vizEditor" aria-controls="vizEditor" role="tab" data-toggle="tab">ASM Editor</a></li>
 					<li role="presentation"><a class="tabu" href="#vizScreen" aria-controls="vizScreen" role="tab" data-toggle="tab">Screen</a></li>
 					<li role="presentation"><a class="tabu" href="#vizDownloads" aria-controls="vizDownloads" role="tab" data-toggle="tab">Downloads</a></li>
 					<li role="presentation"><a class="tabu" href="#vizAbout" aria-controls="vizAbout" role="tab" data-toggle="tab">About</a></li>
@@ -40,14 +41,14 @@ See LICENSE.txt
 
 				<!-- TAB PANES -->
 				<div class="tab-content">
-				
+
 					<!-- ARCHITECTURE PANEL -->
 					<div role="tabpanel" class="tab-pane active" id="vizArchitecture">
-					
+
 						<div class="viz"> 
 							<h2>Architecture</h2>
-							
-							<a href="./downloads/architecture.pdf"  type="application/pdf"  target="_blank"><img id="vizDiagram" src="img/vizmachine.svg" alt="diagram"/></a><br /><br />
+
+							<a href="./downloads/manual_en.pdf"  type="application/pdf"  target="_blank"><img id="vizDiagram" src="img/vizmachine.svg" alt="diagram"/></a><br /><br />
 							The machine has <span class="high">16 general-purpose registers</span> with numbers from 0 to F.<br>
 							Each <span class="high">register</span> has a width of <span class="high">one Byte</span>.<br>
 							Any distinct register within the instructions is referenced by 4 Bits. (0000 corresponds to register 0, 0100 to register 4, 1111 to register F ...)<br>
@@ -57,15 +58,15 @@ See LICENSE.txt
 							Each <span class="high">machine instruction</span> has a <span class="high">length of 2 Byte</span> and consists of an <span class="high">Op-Code</span> with <span class="high">4 Bit</span> and an <span class="high">operand-field of 12 Bits</span>.<br>
 							The following description uses the letters R, S, T within the operand for a hexadecimal number, which points to the number of a <span class="high">register</span>.<br>
 							The letters <span class="high">X</span> and <span class="high">Y</span> within the operand point to hexadecimal numbers, which do not represent registers. These represent a <span class="high">hexadecimal value or an address in the memory between 00 and FF</span>.<br>
-							
+
 						</div>
-					
+
 					</div>
 					<!-- EOF ARCHITECTURE PANEL -->
-					
+
 					<!-- OPCODES PANEL -->
 					<div role="tabpanel" class="tab-pane" id="vizOpcodes">
-					
+
 						<div class="viz"> 
 							<h2>Opcodes</h2>
 							<table class="table table-bordered table-nonfluid" >
@@ -120,18 +121,18 @@ See LICENSE.txt
 								</tr>
 							</table>
 						</div>
-					
+
 					</div>
 					<!-- EOF OPCODES PANEL -->
-			
+
 					<!-- VIZMACHINE PANEL -->
 					<div role="tabpanel" class="tab-pane" id="vizMachine">
 						<!-- VIZMACHINE -->
 						<div class="viz">
-							
+
 							<h2>Machine</h2>
-						
-							<div class="class="form-group"">
+
+							<div class="form-group">
 								<h4><span class="label label-default"><span class="glyphicon glyphicon-cog"></span>&nbsp;Settings</span>
 								<div class="btn-group btn-group-xs" data-toggle="tooltip" data-original-title="Display cell data in different number models!">
 									<label class="btn btn-default btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'hex'" uncheckable><span data-ng-show="vctrl.numberformat=='hex'" class="glyphicon glyphicon-ok"></span>&nbsp;Hexadecimal&nbsp;</label>
@@ -144,16 +145,16 @@ See LICENSE.txt
 								<button data-toggle="tooltip" data-original-title="Reset entire system!" type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetAll()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
 								</h4>
 							</div>
-							
+
 							<table>
 								<tr>
-								
+
 									<td class="device_icon">
 										<div><img src="img/cpu.png"  width="60px"/></div>
 									</td>
-								
+
 									<td class="device_frame">
-								
+
 										<table class="table table-bordered table-nonfluid" >
 											<tr>
 												<td><span data-toggle="tooltip" data-original-title="References to an address in the Main Memory." class="component">PROGRAM&nbsp;COUNTER</span></td>
@@ -199,17 +200,17 @@ See LICENSE.txt
 												</td>
 											</tr>
 										</table>
-								
+
 									</td>
-							
+
 								</tr>
-								
+
 								<tr>
-									
+
 									<td  class="device_icon">
 										<div><img src="img/ram.png" width="60px"/></div>
 									</td>
-						
+
 									<td class="device_frame">
 
 										<table class="table table-bordered table-nonfluid ">
@@ -232,14 +233,14 @@ See LICENSE.txt
 												<td colspan="17">Legend:&nbsp;<span class="legend {{vctrl.cssCellWithProgramAndCounter}}">Program Counter</span>&nbsp;<span class="legend {{vctrl.cssCellWithProgram}}">Program Cells</span>&nbsp;<span class="legend {{vctrl.cssCellWithCode}}">Cells with Data</span>&nbsp;<span class="legend">Empty Cells</span></td>
 											</tr>
 										</table>
-										
+
 									</td>
-								
+
 								</tr>
-								
+
 							</table>
-							
-							
+
+
 							<table id="infoInstructions" class="table table-bordered table-nonfluid">
 								<tr>
 									<td colspan="4"><span class="component">COMMAND LOG</span>&nbsp;&nbsp;&nbsp;<span style="float:right;">
@@ -249,34 +250,46 @@ See LICENSE.txt
 									<td data-ng-class="vctrl.cssCellHeader">Address</td>
 									<td data-ng-class="vctrl.cssCellHeader">Command</td>
 									<td data-ng-class="vctrl.cssCellHeader">Data</td>
-									<td data-ng-class="vctrl.cssCellHeader">Description</td>	
+									<td data-ng-class="vctrl.cssCellHeader">Description</td>
 								</tr>
 							</table>
-						
+
 						</div>
 						<!-- EOF VIZMACHINE -->
 					</div>
 					<!-- EOF VIZMACHINE PANEL -->
-					
+
 					<!-- PROGRAM PANEL -->
 					<div role="tabpanel" class="tab-pane" id="vizAssembler">
-					
+
 						<div class="viz"> 
 							<h2>Program <small>in Assembler</small></h2>
 							<p>Program Size: <b>{{(vctrl.vcommands.length==0)?0:(vctrl.vcommands.length-1)*2}} Bytes</b><br>
 							<a href="#" data-ng-click="vctrl.resetMemory()">Reset&nbsp;Memory</a></p>
 <pre class="prg_body"><p>Set&nbsp;Starting&nbsp;Point&nbsp;in&nbsp;Memory:&nbsp;<select id="program_counter_assembler" name="programcounter" data-ng-model="vctrl.viz.cellProgramCounter.data" data-ng-change="vctrl.updateMachine();"><option ng-repeat="n in [] | range:0:255" ng-selected="vctrl.viz.cellProgramCounter.data == n" value="{{n}}">{{vctrl.viz.constructor.fillGaps(n.toString(16).toUpperCase(),2)}}</option></select></p></pre>
-<pre class="prg_header"><p>Address&#09; <b>Opcode</b>&#09;Operand&#09;Description</p></pre>						
+<pre class="prg_header"><p>Address&#09; <b>Opcode</b>&#09;Operand&#09;Description</p></pre>
 <pre class="prg_body"><p data-ng-repeat="cmd in vctrl.vcommands">{{cmd.address.substr(0,2)}}|{{cmd.address.substr(2)}}&#09;<select data-ng-model="cmd.gstCommand" data-ng-model-options="{ getterSetter: true}" data-ng-change="vctrl.updateMachine();"><option data-ng-repeat="cmdtype in vctrl.commandtypes | orderBy:'codeDec'" value="{{cmdtype.codeDec}}" data-ng-selected="cmdtype.codeDec==cmd.gstCommand().codeDec">{{cmdtype.name}}</option></select>&#09;<input type="text" data-ng-model="cmd.gstOperand" data-ng-model-options="{ getterSetter: true,updateOn: 'blur'}" value="{{cmd.opcode.substr(1)}}" width="3em" maxlength="3" style="width:3em;text-align:center;"/>&#09;{{vctrl.getCommandDescription(cmd.command.codeDec,cmd.opcode.substr(1))}}</p></pre>
-							
+
 						</div>
-					
+
 					</div>
 					<!-- EOF PROGRAM PANEL -->
-					
+
+					<!-- ASM EDITOR PANEL -->
+					<div role="tabpanel" class="tab-pane" id="vizEditor">
+
+						<div class="viz"> 
+							<iframe src="html/editor.html" width="100%" height="600px" style="border:none;" title="ASM Editor">
+							Your browser does not support iframes.
+							</iframe>
+						</div>
+
+					</div>
+					<!-- EOF ASM EDITOR PANEL -->
+
 					<!-- ABOUT SCREEN -->
 					<div role="tabpanel" class="tab-pane" id="vizScreen">
-					
+
 						<div class="viz"> 
 							<h2>Screens</h2>
 							<h3>Display (2x16)</h3>
@@ -310,7 +323,7 @@ See LICENSE.txt
 									data-ng-svgwidth="{{vctrl.getGridWidth()}}" 
 									data-ng-svgheight="{{vctrl.getGridHeight()}}" 
 									style="fill:white;stroke-width:3;stroke:rgb(0,0,0)"/>
-								<g data-ng-repeat="(indexRow,row) in vctrl.memcells">	
+								<g data-ng-repeat="(indexRow,row) in vctrl.memcells">
 									<rect 
 										id="svgcell-{{cell.vcell.number}}"
 										data-ng-repeat="cell in row" 
@@ -323,14 +336,14 @@ See LICENSE.txt
 										style="fill:{{cell.Color()}};stroke-width:1;stroke:rgb(150,150,150)" />
 								</g>
 							</svg>
-						</div>		
-					
+						</div>
+
 					</div>
 					<!-- EOF SCREEN PANEL -->
-					
+
 					<!-- DOWNLOADS PANEL -->
 					<div role="tabpanel" class="tab-pane" id="vizDownloads">
-					
+
 						<div class="viz"> 
 							<h2>Downloads</h2>
 							<h3>Vizmachine</h3>
@@ -343,13 +356,13 @@ See LICENSE.txt
 							<a href="downloads/demo_screen.vzm" download="vizmachine_demo_jump_wait.vzm">Demo</a> for JUMP and WAIT  as *.vzm dump. (Run program and look at memory usage screen!)<br>
 							<!--<a href="downloads/demo_ascii.vzm" download="vizmachine_demo_ascii.vzm">Demo</a> for ASCII display as *.vzm dump. (Run program and look at ASCII display!)-->
 						</div>
-						
+
 					</div>
 					<!-- EOF DOWNLOADS PANEL -->
-					
+
 					<!-- ABOUT PANEL -->
 					<div role="tabpanel" class="tab-pane" id="vizAbout">
-					
+
 						<div class="viz"> 
 							<h2>About</h2>
 							<br>
@@ -365,7 +378,7 @@ See LICENSE.txt
 							Learning Material / Refining: <b>DI Manfred Pamsl</b> Mail: manfred.pamsl-AT-fh-joanneum.at<br />
 							Architecture Idea from <b>&quot;Computer Science: An Overview (12th Edition)&quot; by Glenn Brookshear &amp; Dennis Brylow</b>
 							<br/><br/>
-							
+
 							<b>FH JOANNEUM - IT + KAPFENBERG</b><br />
 							<a href="http://fh-joanneum.at/itm" target="_blank">Internet Technology</a> / <a href="http://fh-joanneum.at/swd" target="_blank">Software Design</a><br/>
 							<a href="http://fh-joanneum.at/ase" target="_blank">IT &amp; Mobile Security</a> / <a href="http://fh-joanneum.at/irm" target="_blank">IT-Law &amp; Management</a><br />
@@ -375,18 +388,18 @@ See LICENSE.txt
 							Fax: +43 (0)3862 33600-8381<br />
 							E-Mail: <a  href="mailto:itm@fh-joanneum.at">itm@fh-joanneum.at</a><br />
 						</div>
-					
+
 					</div>
 					<!-- EOF ABOUT PANEL -->
-					
+
 				</div>
 				<!-- EOF TAB PANES -->
-				
+
 			</div>
 			<!-- EOF TAB PANEL -->
-			
+
 		</div>
-		
+
 		<script type="text/javascript" src="js/jquery.min.js"></script>
 		<script type="text/javascript" src="js/angular.min.js"></script>
 		<script type="text/javascript" src="js/angular-timer.min.js"></script>
@@ -395,7 +408,7 @@ See LICENSE.txt
 		<script type="text/javascript" src="js/bootstrap-filestyle.min.js"> </script>
 		<script type="text/javascript" src="js/snap.svg-min.js"></script>
 		<script type="text/javascript" src="js/FileSaver.min.js"></script>
-		<script type="text/javascript" src="js/vizmachine.js"></script>	
+		<script type="text/javascript" src="js/vizmachine.js"></script>
 		<script type="text/javascript" src="js/vizgui.js"></script>
 		<script type="text/javascript" src="js/gui.js"></script>
 
