@@ -105,29 +105,34 @@ input.data_row {
 
 .cell_empty{
     background-color: rgb(39, 39, 39);
+	color: white;
 }
 
 td.cell_active{
-    background-color: red; /* #ffd2e1; */
-	
+    background-color: rgb(0, 255, 0); /* #ffd2e1; */
+	color: white;
 }
 
 input.cell_active {
-	background-color: #475138; /* white */
+	background-color: #73825c; /* white */
+	color: white;
 }
 
 .cell_with_code{
-    background-color: #3c515b;
+    background-color: #698b9b;
+	color: white;
 }
 
 .cell_with_program{
-    background-color: #414a33;
+    background-color: #7f8f66;
+	color: white;
 }
 
 .cell_with_program_and_counter{
-	background-color: #363e29;
-    border-color: red;
+	background-color: #75825f;
+    border-color: rgb(27, 215, 55);
 	border-width: 2px;
+	color: white;
 }
 
 .cell_header {
