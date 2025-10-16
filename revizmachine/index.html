@@ -135,14 +135,14 @@ See LICENSE.txt
 							<div class="form-group">
 								<h4><span class="label label-default"><span class="glyphicon glyphicon-cog"></span>&nbsp;Settings</span>
 								<div class="btn-group btn-group-xs" data-toggle="tooltip" data-original-title="Display cell data in different number models!">
-									<label class="btn btn-default btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'hex'" uncheckable><span data-ng-show="vctrl.numberformat=='hex'" class="glyphicon glyphicon-ok"></span>&nbsp;Hexadecimal&nbsp;</label>
-									<label class="btn btn-default btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'bin'" uncheckable><span data-ng-show="vctrl.numberformat=='bin'" class="glyphicon glyphicon-ok"></span>&nbsp;Binary&nbsp;</label>
-									<label class="btn btn-default btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'dec'" uncheckable><span data-ng-show="vctrl.numberformat=='dec'" class="glyphicon glyphicon-ok"></span>&nbsp;Decimal&nbsp;</label>
+									<label class="btn  btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'hex'" uncheckable><span data-ng-show="vctrl.numberformat=='hex'" class="glyphicon glyphicon-ok"></span>&nbsp;Hexadecimal&nbsp;</label>
+									<label class="btn  btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'bin'" uncheckable><span data-ng-show="vctrl.numberformat=='bin'" class="glyphicon glyphicon-ok"></span>&nbsp;Binary&nbsp;</label>
+									<label class="btn  btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'dec'" uncheckable><span data-ng-show="vctrl.numberformat=='dec'" class="glyphicon glyphicon-ok"></span>&nbsp;Decimal&nbsp;</label>
 								</div>
 								&nbsp;
-								<button data-toggle="tooltip" data-original-title="Display full amount of digits (0s)" type="button" class="btn btn-default btn-xs" data-ng-model="vctrl.filling" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.filling" class="glyphicon glyphicon-ok"></span>&nbsp;Toggle Digits&nbsp;</button>
+								<button data-toggle="tooltip" data-original-title="Display full amount of digits (0s)" type="button" class="btn  btn-xs" data-ng-model="vctrl.filling" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.filling" class="glyphicon glyphicon-ok"></span>&nbsp;Toggle Digits&nbsp;</button>
 								&nbsp;
-								<button data-toggle="tooltip" data-original-title="Reset entire system!" type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetAll()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
+								<button data-toggle="tooltip" data-original-title="Reset entire system!" type="button" class="btn  btn-xs" data-ng-click="vctrl.resetAll()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
 								</h4>
 							</div>
 
@@ -164,7 +164,7 @@ See LICENSE.txt
 													</select>
 												</td>
 												<td>
-													<button data-toggle="tooltip" data-original-title="Set Program Counter to 0." type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetProgramCounter()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
+													<button data-toggle="tooltip" data-original-title="Set Program Counter to 0." type="button" class="btn  btn-xs" data-ng-click="vctrl.resetProgramCounter()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
 												</td>
 											</tr>
 										</table>
@@ -177,7 +177,7 @@ See LICENSE.txt
 												</td>
 												<td>
 													<div class="btn-groupbtn-group-xs" role="group" aria-label="..."><nobr>
-														<button data-toggle="tooltip" data-original-title="Run one step (2Bytes)." type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.play(true,'button')"><span class="glyphicon glyphicon-menu-right" aria-hidden="true"></span>&nbsp;Step</button>
+														<button data-toggle="tooltip" data-original-title="Run one step (2Bytes)." type="button" class="btn  btn-xs" data-ng-click="vctrl.play(true,'button')"><span class="glyphicon glyphicon-menu-right" aria-hidden="true"></span>&nbsp;Step</button>
 														<button data-toggle="tooltip" data-original-title="Run program until HALT." type="button" data-ng-class="{'btn btn-success btn-xs': vctrl.isStopped(), 'btn btn-danger btn-xs': vctrl.isRunning()}" data-ng-click="vctrl.play(false,'button')"><span data-ng-class="{'glyphicon glyphicon-play': vctrl.isStopped(), 'glyphicon glyphicon-stop': vctrl.isRunning()}" aria-hidden="true"></span>&nbsp;{{vctrl.runtimemode}}</button>
 													</nobr></div>
 												</td>
@@ -189,7 +189,7 @@ See LICENSE.txt
 										<table class="table table-bordered table-nonfluid">
 											<tr>
 												<td colspan="16"><span class="component">GENERAL PURPOSE REGISTER</span><span style="float:right;">
-												<button type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetRegister()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
+												<button type="button" class="btn  btn-xs" data-ng-click="vctrl.resetRegister()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
 											</tr>
 											<tr>
 												<td class="data_row" data-ng-repeat="cell in vctrl.viz.cellsRegister" data-ng-class="vctrl.cssCellHeader">R<b>{{$index.toString(16).toUpperCase()}}</b></td>
@@ -215,7 +215,7 @@ See LICENSE.txt
 
 										<table class="table table-bordered table-nonfluid ">
 											<tr>
-												<td colspan="17"><span class="component">MAIN MEMORY</span><span style="float:right;"><form class="form-inline"><input accept="text/vzm" type="file" on-read-file="vctrl.uploadContent($fileContent)"  style="display:inline;" class="filestyle" data-classButton="btn btn-primary" data-size="xs" data-input="false" data-classIcon="icon-plus" data-iconName="glyphicon-open" data-badge="false" data-buttonText="&nbsp;Upload"/>&nbsp;<a id="vDownload" data-ng-click="vctrl.downloadContent()"><button type="button" class="btn btn-default btn-xs" ><span class="glyphicon glyphicon-save"></span>&nbsp;Download</button></a>&nbsp;<button type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetMemory()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></form></span></td>
+												<td colspan="17"><span class="component">MAIN MEMORY</span><span style="float:right;"><form class="form-inline"><input accept="text/vzm" type="file" on-read-file="vctrl.uploadContent($fileContent)"  style="display:inline;" class="filestyle" data-classButton="btn btn-primary" data-size="xs" data-input="false" data-classIcon="icon-plus" data-iconName="glyphicon-open" data-badge="false" data-buttonText="&nbsp;Upload"/>&nbsp;<a id="vDownload" data-ng-click="vctrl.downloadContent()"><button type="button" class="btn  btn-xs" ><span class="glyphicon glyphicon-save"></span>&nbsp;Download</button></a>&nbsp;<button type="button" class="btn  btn-xs" data-ng-click="vctrl.resetMemory()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></form></span></td>
 											</tr>
 											<tr>
 												<td class="data_row" data-ng-class="vctrl.cssCellHeader"></td>
@@ -244,7 +244,7 @@ See LICENSE.txt
 							<table id="infoInstructions" class="table table-bordered table-nonfluid">
 								<tr>
 									<td colspan="4"><span class="component">COMMAND LOG</span>&nbsp;&nbsp;&nbsp;<span style="float:right;">
-									<button data-toggle="tooltip" data-original-title="Turn log on or off" type="button" class="btn btn-default btn-xs" data-ng-model="vctrl.logtoggle" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.logtoggle" class="glyphicon glyphicon-ok"></span>&nbsp;Logging&nbsp;</button>&nbsp;<button type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetCommandLog()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
+									<button data-toggle="tooltip" data-original-title="Turn log on or off" type="button" class="btn  btn-xs" data-ng-model="vctrl.logtoggle" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.logtoggle" class="glyphicon glyphicon-ok"></span>&nbsp;Logging&nbsp;</button>&nbsp;<button type="button" class="btn  btn-xs" data-ng-click="vctrl.resetCommandLog()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
 								</tr>
 								<tr>
 									<td data-ng-class="vctrl.cssCellHeader">Address</td>
