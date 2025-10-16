@@ -189,12 +189,16 @@ span.high {
 
 /* TABS */
 
+.btn-xs {
+	background-color: #3b3b3b;
+}
+
 .nav-tabs {
 	background-color: #181818;
 }
 
 .tab-content {
-	background-color: #3f3f3f;
+	background-color: #1F1F1F;
 	color: #ffffff;
 	padding: 5px
 }
