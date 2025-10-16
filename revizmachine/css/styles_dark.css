@@ -1,10 +1,15 @@
 /* VizMachine Styles */
 
+* {
+	color-scheme: dark;
+}
+
 html, body {
 	font-family: Arial, Verdana, sans serif;
 	font-size: 12px;
 	margin:0px;
 	padding:0px;
+	background-color: ;
 }
 
 pre.prg_header, pre.prg_body {
@@ -64,11 +69,12 @@ td.instruction {
 padding:3px;
 }
 
-.data_row !important{
-	margin:2px;padding:0px;
-	width:50px; 
-	text-align:center;
-	vertical-align: middle;
+.data_row {
+	margin:2px !important;
+	padding:0px !important;
+	width:50px !important; 
+	text-align:center !important;
+	vertical-align: middle !important;
 }
 
 /* DEVICES */
@@ -162,7 +168,7 @@ span.high {
 /* TABS */
 
 .nav-tabs{
-  background-color:#c4db9b;
+  background-color:#69413c;
 }
 .tab-content{
     background-color:#FFF;
