@@ -190,12 +190,12 @@ span.high {
 /* TABS */
 
 .nav-tabs {
-	background-color: #69413c;
+	background-color: #181818;
 }
 
 .tab-content {
-	background-color: #1F1F1F;
-	color: #000;
+	background-color: #3f3f3f;
+	color: #ffffff;
 	padding: 5px
 }
 
@@ -204,6 +204,7 @@ span.high {
 	color: #DDDDDD;
 	border-color: #181818;
 	background-color: #181818;
+	stroke: none;
 }
 
 .nav-tabs>li>a:hover {
