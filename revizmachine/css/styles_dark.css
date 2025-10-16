@@ -2,7 +2,7 @@
 
 * {
 	color-scheme: dark !important;
-	color: #ddd
+	color: #eee
 }
 
 html, body {
@@ -11,7 +11,7 @@ html, body {
 	margin:0px;
 	padding:0px;
 	background-color: #1F1F1F;
-	color: #ddd;
+	color: #eee;
 }
 
 pre.prg_header, pre.prg_body {
@@ -194,12 +194,12 @@ span.high {
 	border-width: 1px;
 	border-bottom-width: 0px;
 	border-color: #444;
-    color:#000;
+    color:#eee;
 }
 
 #header {
 	margin:0px; padding:0px;
-	background-color:#ddd;
+	background-color:#eee;
 }
 
 #header h1 {
@@ -224,7 +224,7 @@ span.high {
 	height:7.2rem;
 	margin: 1rem;
 	padding: .25rem;
-	/* background-color:#ddd; */ 
+	/* background-color:#eee; */ 
 	outline-color: #333;
 	outline-style: none;
 	outline-width: 0px;
@@ -240,7 +240,7 @@ span.high {
 	margin: 0;
 	padding: 0;
 	border-color: #aaa;
-	background-color:#ddd;
+	background-color:#eee;
 	border-style: solid;
 	border-width: 1px;
 	vertical-align: middle;
