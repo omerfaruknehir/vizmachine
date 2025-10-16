@@ -48,7 +48,7 @@ See LICENSE.txt
 						<div class="viz"> 
 							<h2>Architecture</h2>
 
-							<a href="./downloads/manual_en.pdf"  type="application/pdf"  target="_blank"><img id="vizDiagram" src="img/vizmachine_dark.svg" alt="diagram" class="dark"/><img id="vizDiagram" src="img/vizmachine.svg" alt="diagram" class="light"/></a><br /><br />
+							<a href="./downloads/manual_en.pdf" type="application/pdf" target="_blank"><img id="vizDiagram" src="img/vizmachine_dark.svg" alt="diagram" class="dark"/><img id="vizDiagram" src="img/vizmachine.svg" alt="diagram" class="light"/></a><br /><br />
 							The machine has <span class="high">16 general-purpose registers</span> with numbers from 0 to F.<br>
 							Each <span class="high">register</span> has a width of <span class="high">one Byte</span>.<br>
 							Any distinct register within the instructions is referenced by 4 Bits. (0000 corresponds to register 0, 0100 to register 4, 1111 to register F ...)<br>
@@ -135,14 +135,14 @@ See LICENSE.txt
 							<div class="form-group">
 								<h4><span class="label label-default"><span class="glyphicon glyphicon-cog"></span>&nbsp;Settings</span>
 								<div class="btn-group btn-group-xs" data-toggle="tooltip" data-original-title="Display cell data in different number models!">
-									<label class="btn  btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'hex'" uncheckable><span data-ng-show="vctrl.numberformat=='hex'" class="glyphicon glyphicon-ok"></span>&nbsp;Hexadecimal&nbsp;</label>
-									<label class="btn  btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'bin'" uncheckable><span data-ng-show="vctrl.numberformat=='bin'" class="glyphicon glyphicon-ok"></span>&nbsp;Binary&nbsp;</label>
-									<label class="btn  btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'dec'" uncheckable><span data-ng-show="vctrl.numberformat=='dec'" class="glyphicon glyphicon-ok"></span>&nbsp;Decimal&nbsp;</label>
+									<label class="btn btn-default btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'hex'" uncheckable><span data-ng-show="vctrl.numberformat=='hex'" class="glyphicon glyphicon-ok"></span>&nbsp;Hexadecimal&nbsp;</label>
+									<label class="btn btn-default btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'bin'" uncheckable><span data-ng-show="vctrl.numberformat=='bin'" class="glyphicon glyphicon-ok"></span>&nbsp;Binary&nbsp;</label>
+									<label class="btn btn-default btn-xs" data-ng-model="vctrl.numberformat" btn-radio="'dec'" uncheckable><span data-ng-show="vctrl.numberformat=='dec'" class="glyphicon glyphicon-ok"></span>&nbsp;Decimal&nbsp;</label>
 								</div>
 								&nbsp;
-								<button data-toggle="tooltip" data-original-title="Display full amount of digits (0s)" type="button" class="btn  btn-xs" data-ng-model="vctrl.filling" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.filling" class="glyphicon glyphicon-ok"></span>&nbsp;Toggle Digits&nbsp;</button>
+								<button data-toggle="tooltip" data-original-title="Display full amount of digits (0s)" type="button" class="btn btn-default btn-xs" data-ng-model="vctrl.filling" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.filling" class="glyphicon glyphicon-ok"></span>&nbsp;Toggle Digits&nbsp;</button>
 								&nbsp;
-								<button data-toggle="tooltip" data-original-title="Reset entire system!" type="button" class="btn  btn-xs" data-ng-click="vctrl.resetAll()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
+								<button data-toggle="tooltip" data-original-title="Reset entire system!" type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetAll()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
 								</h4>
 							</div>
 
@@ -150,7 +150,7 @@ See LICENSE.txt
 								<tr>
 
 									<td class="device_icon">
-										<div><img src="img/cpu.svg"  width="60px"/></div>
+										<div><img src="img/cpu.svg" width="60px"/></div>
 									</td>
 
 									<td class="device_frame">
@@ -164,7 +164,7 @@ See LICENSE.txt
 													</select>
 												</td>
 												<td>
-													<button data-toggle="tooltip" data-original-title="Set Program Counter to 0." type="button" class="btn  btn-xs" data-ng-click="vctrl.resetProgramCounter()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
+													<button data-toggle="tooltip" data-original-title="Set Program Counter to 0." type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetProgramCounter()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button>
 												</td>
 											</tr>
 										</table>
@@ -177,7 +177,7 @@ See LICENSE.txt
 												</td>
 												<td>
 													<div class="btn-groupbtn-group-xs" role="group" aria-label="..."><nobr>
-														<button data-toggle="tooltip" data-original-title="Run one step (2Bytes)." type="button" class="btn  btn-xs" data-ng-click="vctrl.play(true,'button')"><span class="glyphicon glyphicon-menu-right" aria-hidden="true"></span>&nbsp;Step</button>
+														<button data-toggle="tooltip" data-original-title="Run one step (2Bytes)." type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.play(true,'button')"><span class="glyphicon glyphicon-menu-right" aria-hidden="true"></span>&nbsp;Step</button>
 														<button data-toggle="tooltip" data-original-title="Run program until HALT." type="button" data-ng-class="{'btn btn-success btn-xs': vctrl.isStopped(), 'btn btn-danger btn-xs': vctrl.isRunning()}" data-ng-click="vctrl.play(false,'button')"><span data-ng-class="{'glyphicon glyphicon-play': vctrl.isStopped(), 'glyphicon glyphicon-stop': vctrl.isRunning()}" aria-hidden="true"></span>&nbsp;{{vctrl.runtimemode}}</button>
 													</nobr></div>
 												</td>
@@ -189,7 +189,7 @@ See LICENSE.txt
 										<table class="table table-bordered table-nonfluid">
 											<tr>
 												<td colspan="16"><span class="component">GENERAL PURPOSE REGISTER</span><span style="float:right;">
-												<button type="button" class="btn  btn-xs" data-ng-click="vctrl.resetRegister()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
+												<button type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetRegister()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
 											</tr>
 											<tr>
 												<td class="data_row" data-ng-repeat="cell in vctrl.viz.cellsRegister" data-ng-class="vctrl.cssCellHeader">R<b>{{$index.toString(16).toUpperCase()}}</b></td>
@@ -207,7 +207,7 @@ See LICENSE.txt
 
 								<tr>
 
-									<td  class="device_icon">
+									<td class="device_icon">
 										<div><img src="img/ram.svg" width="60px"/></div>
 									</td>
 
@@ -215,18 +215,18 @@ See LICENSE.txt
 
 										<table class="table table-bordered table-nonfluid ">
 											<tr>
-												<td colspan="17"><span class="component">MAIN MEMORY</span><span style="float:right;"><form class="form-inline"><input accept="text/vzm" type="file" on-read-file="vctrl.uploadContent($fileContent)"  style="display:inline;" class="filestyle" data-classButton="btn btn-primary" data-size="xs" data-input="false" data-classIcon="icon-plus" data-iconName="glyphicon-open" data-badge="false" data-buttonText="&nbsp;Upload"/>&nbsp;<a id="vDownload" data-ng-click="vctrl.downloadContent()"><button type="button" class="btn  btn-xs" ><span class="glyphicon glyphicon-save"></span>&nbsp;Download</button></a>&nbsp;<button type="button" class="btn  btn-xs" data-ng-click="vctrl.resetMemory()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></form></span></td>
+												<td colspan="17"><span class="component">MAIN MEMORY</span><span style="float:right;"><form class="form-inline"><input accept="text/vzm" type="file" on-read-file="vctrl.uploadContent($fileContent)" style="display:inline;" class="filestyle" data-classButton="btn btn-primary" data-size="xs" data-input="false" data-classIcon="icon-plus" data-iconName="glyphicon-open" data-badge="false" data-buttonText="&nbsp;Upload"/>&nbsp;<a id="vDownload" data-ng-click="vctrl.downloadContent()"><button type="button" class="btn btn-default btn-xs" ><span class="glyphicon glyphicon-save"></span>&nbsp;Download</button></a>&nbsp;<button type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetMemory()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></form></span></td>
 											</tr>
 											<tr>
 												<td class="data_row" data-ng-class="vctrl.cssCellHeader"></td>
-												<td class="data_row" data-ng-repeat="cell in vctrl.memnumbers"  data-ng-class="cell.css">0<b>{{$index.toString(16).toUpperCase()}}</b></td>
+												<td class="data_row" data-ng-repeat="cell in vctrl.memnumbers" data-ng-class="cell.css">0<b>{{$index.toString(16).toUpperCase()}}</b></td>
 											</tr>
 											<tr data-ng-repeat="row in vctrl.memcells">
 												<td class="data_row" data-ng-class="vctrl.cssCellHeader">
-												   <b>{{$index.toString(16).toUpperCase()}}</b>0
+													<b>{{$index.toString(16).toUpperCase()}}</b>0
 												</td>
 												<td class="data_row" data-ng-repeat="cell in row" data-ng-class="cell.css">
-													<input  data-ng-class="cell.css" type="text" class="data_row" data-ng-model="cell.Data" data-ng-model-options="{ getterSetter: true}" data-ng-focus="cell.parent.updateMachine(cell);" onfocus="this.select();"  data-ng-blur="vctrl.updateCells()" data-toggle="tooltip" data-original-title="{{vctrl.getTooltip(cell.vcell)}}"/>
+													<input data-ng-class="cell.css" type="text" class="data_row" data-ng-model="cell.Data" data-ng-model-options="{ getterSetter: true}" data-ng-focus="cell.parent.updateMachine(cell);" onfocus="this.select();" data-ng-blur="vctrl.updateCells()" data-toggle="tooltip" data-original-title="{{vctrl.getTooltip(cell.vcell)}}"/>
 												</td>
 											</tr>
 											<tr>
@@ -244,7 +244,7 @@ See LICENSE.txt
 							<table id="infoInstructions" class="table table-bordered table-nonfluid">
 								<tr>
 									<td colspan="4"><span class="component">COMMAND LOG</span>&nbsp;&nbsp;&nbsp;<span style="float:right;">
-									<button data-toggle="tooltip" data-original-title="Turn log on or off" type="button" class="btn  btn-xs" data-ng-model="vctrl.logtoggle" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.logtoggle" class="glyphicon glyphicon-ok"></span>&nbsp;Logging&nbsp;</button>&nbsp;<button type="button" class="btn  btn-xs" data-ng-click="vctrl.resetCommandLog()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
+									<button data-toggle="tooltip" data-original-title="Turn log on or off" type="button" class="btn btn-default btn-xs" data-ng-model="vctrl.logtoggle" btn-checkbox btn-checkbox-true="true" btn-checkbox-false="false"><span data-ng-show="vctrl.logtoggle" class="glyphicon glyphicon-ok"></span>&nbsp;Logging&nbsp;</button>&nbsp;<button type="button" class="btn btn-default btn-xs" data-ng-click="vctrl.resetCommandLog()"><span class="glyphicon glyphicon-refresh"></span>&nbsp;Reset</button></span></td>
 								</tr>
 								<tr>
 									<td data-ng-class="vctrl.cssCellHeader">Address</td>
@@ -353,7 +353,7 @@ See LICENSE.txt
 							Solutions for <a href="downloads/aufgabe1.vzm" download="vizmachine_01.vzm">1</a>, <a href="downloads/aufgabe2a.vzm" download="vizmachine_02a.vzm">2a</a>, <a href="downloads/aufgabe2b.vzm" download="vizmachine_02b.vzm">2b</a>, <a href="downloads/aufgabe3.vzm" download="vizmachine_03.vzm">3</a>, <a href="downloads/aufgabe4a.vzm" download="vizmachine_04a.vzm">4a</a>, <a href="downloads/aufgabe4b.vzm" download="vizmachine_04b.vzm">4b</a> as *.vzm dumps.<br>
 							Further exercises using this virtual machine (<a href="downloads/exercises2_en.pdf" download="vizmachine_exercises2.pdf">en</a>, <a href="downloads/exercises2_de.pdf" download="vizmachine_aufgaben2.pdf">de</a>)
 							<h3>Demos</h3>
-							<a href="downloads/demo_screen.vzm" download="vizmachine_demo_jump_wait.vzm">Demo</a> for JUMP and WAIT  as *.vzm dump. (Run program and look at memory usage screen!)<br>
+							<a href="downloads/demo_screen.vzm" download="vizmachine_demo_jump_wait.vzm">Demo</a> for JUMP and WAIT as *.vzm dump. (Run program and look at memory usage screen!)<br>
 							<!--<a href="downloads/demo_ascii.vzm" download="vizmachine_demo_ascii.vzm">Demo</a> for ASCII display as *.vzm dump. (Run program and look at ASCII display!)-->
 						</div>
 
@@ -386,7 +386,7 @@ See LICENSE.txt
 							8605 Kapfenberg, AUSTRIA<br />
 							Tel.: +43 (0)3862 33600-8374<br />
 							Fax: +43 (0)3862 33600-8381<br />
-							E-Mail: <a  href="mailto:itm@fh-joanneum.at">itm@fh-joanneum.at</a><br />
+							E-Mail: <a href="mailto:itm@fh-joanneum.at">itm@fh-joanneum.at</a><br />
 						</div>
 
 					</div>
