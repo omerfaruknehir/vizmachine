@@ -9,7 +9,7 @@ html, body {
 	font-size: 12px;
 	margin:0px;
 	padding:0px;
-	background-color: ;
+	background-color: #333;
 }
 
 pre.prg_header, pre.prg_body {
@@ -201,7 +201,7 @@ span.high {
 }
 
 #header h1 {
-	background-color:#c4db9b;
+	background-color:#69413c;
 	margin:0px;
 	padding:10px;
 }
