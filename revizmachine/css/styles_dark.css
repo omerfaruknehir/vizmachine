@@ -179,14 +179,15 @@ span.high {
 }
 .nav-tabs > li > a{
 	border-width: 1px;
-	border-color: #444;
+	color: #DDDDDD;
+	border-color: #181818;
 	background-color:#eee;
 }
 .nav-tabs > li > a:hover{
 	background-color: #999 !important;
 	border-width: 1px;
 	border-color: #444;
-    color:#fff;
+    color: #1F1F1F;
 }
 
 .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover, .nav-tabs > li.active > a{
@@ -194,7 +195,7 @@ span.high {
 	border-width: 1px;
 	border-bottom-width: 0px;
 	border-color: #444;
-    color:#eee;
+    color: #eee;
 }
 
 #header {
