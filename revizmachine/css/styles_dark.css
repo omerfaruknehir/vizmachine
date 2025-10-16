@@ -184,10 +184,10 @@ span.high {
 	background-color:#181818;
 }
 .nav-tabs > li > a:hover{
-	background-color: #999 !important;
+	background-color: #1F1F1F !important;
 	border-width: 1px;
 	border-color: #444;
-    color: #1F1F1F;
+    color: #EEE;
 }
 
 .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover, .nav-tabs > li.active > a{
