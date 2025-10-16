@@ -380,7 +380,7 @@ See LICENSE.txt
 			if(value!==null&&typeof(value)!="undefined"){
 				this.vcell.data = value;
 			}else{
-				return 'rgb('+(256-this.vcell.data)+','+(256-this.vcell.data)+','+(256-this.vcell.data)+')';
+				return 'rgb('+(this.vcell.data)+','+(this.vcell.data)+','+(this.vcell.data)+')';
 			}
 		}
 		
