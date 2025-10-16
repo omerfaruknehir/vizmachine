@@ -190,14 +190,14 @@ span.high {
 /* TABS */
 
 .btn-default {
-	background-color: #3b3b3b;
-	color: #eee;
-	border-color: #3b3b3b;
+	background-color: #3b3b3b !important;
+	color: #eee !important;
+	border-color: #3b3b3b !important;
 }
 .btn-default:hover {
-	background-color: #444;
-	color: #eee;
-	border-color: #444;
+	background-color: #444 !important;
+	color: #eee !important;
+	border-color: #444 !important;
 }
 
 .nav-tabs {
