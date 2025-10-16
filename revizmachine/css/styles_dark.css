@@ -189,8 +189,15 @@ span.high {
 
 /* TABS */
 
-.btn-xs {
+.btn {
 	background-color: #3b3b3b;
+	color: #eee;
+	border-color: #3b3b3b;
+}
+.btn:hover {
+	background-color: #444;
+	color: #eee;
+	border-color: #444;
 }
 
 .nav-tabs {
