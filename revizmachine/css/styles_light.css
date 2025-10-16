@@ -283,3 +283,11 @@ span.high {
 }
 
 
+
+.dark {
+	display: none;
+}
+
+.light {
+	display: auto;
+}

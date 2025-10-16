@@ -89,7 +89,7 @@ padding:3px;
 }
 .device_icon  div {
 	border-style: dashed;
-	border-color: #aaa;
+	border-color: #2f2f2f;
 	border-width: 2px;
 	height: auto;
 }
@@ -104,7 +104,7 @@ input.data_row {
 }
 
 .cell_empty{
-    background-color: white;
+    background-color: rgb(39, 39, 39);
 }
 
 td.cell_active{
@@ -113,25 +113,25 @@ td.cell_active{
 }
 
 input.cell_active {
-	background-color: #c4db9b; /* white */
+	background-color: #475138; /* white */
 }
 
 .cell_with_code{
-    background-color: #a1cfe3;
+    background-color: #3c515b;
 }
 
 .cell_with_program{
-    background-color: #c4db9b;
+    background-color: #414a33;
 }
 
 .cell_with_program_and_counter{
-	background-color: #c4db9b;
+	background-color: #363e29;
     border-color: red;
 	border-width: 2px;
 }
 
 .cell_header {
-    background-color: #909090;
+    background-color: #3f3f3f;
     color: white;
 	text-align: center;
 }
@@ -291,3 +291,11 @@ span.high {
 }
 
 
+
+.dark {
+	display: auto;
+}
+
+.light {
+	display: none;
+}
