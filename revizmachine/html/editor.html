@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReVizmAsm Editor</title>
-    <script src="monaco/min/vs/loader.js"></script>
+    <script src="../monaco/min/vs/loader.js"></script>
     <style>
         * {
             color-scheme: dark;
@@ -85,7 +85,7 @@
 
     <script>
         // Load Monaco via jsDelivr to avoid MIME-type blocks seen with unpkg (nosniff response).
-        require.config({ paths: { 'vs': 'monaco/min/vs' } });
+        require.config({ paths: { 'vs': '../monaco/min/vs' } });
         require(['vs/editor/editor.main'], function () {
             // Define the custom language
             monaco.languages.register({ id: 'revizmasm' });
