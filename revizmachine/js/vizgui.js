@@ -538,6 +538,36 @@ See LICENSE.txt
 			}
 			this.resetProgramCounter();
 		};
+
+		// Load hex string directly to memory (from ASM editor)
+		this.loadHexToMemory = function(hexString){
+			var result = '';
+			var data = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+			var content = hexString.toUpperCase();
+			var counterCells = 0;
+			this.resetMemory();
+			this.resetRegister();
+			for(var i=0;i<content.length;i++){
+				var val = content[i];
+				if(data.indexOf(val)!=-1){
+					result += val;
+				}
+				if(result==''){
+					break;
+				}
+				if(result.length==2){
+					if(counterCells==(this.viz.sizeMemory-1))
+						break;
+					this.viz.cellsMemory[counterCells].data = parseInt(result,16);
+					counterCells++;
+					result='';
+				}
+			}
+			this.resetProgramCounter();
+			this.updateAssembler();
+			this.updateCells();
+			$scope.$apply();
+		};
 		
 		this.downloadContent = function(){
 			var today = new Date();
