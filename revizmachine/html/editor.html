@@ -1638,6 +1638,67 @@ skip:
                 }
             });
 
+            // Auto-compile toggle
+            let autoCompileEnabled = false;
+            const autoCompileBtn = document.getElementById('autoCompileToggle');
+            autoCompileBtn.addEventListener('click', () => {
+                autoCompileEnabled = !autoCompileEnabled;
+                autoCompileBtn.textContent = 'Auto-compile: ' + (autoCompileEnabled ? 'ON' : 'OFF');
+                if (autoCompileEnabled) {
+                    // Trigger initial compile when enabled
+                    const code = editor.getValue();
+                    const result = compile(code, "stdout");
+                    if (result.success) {
+                        document.getElementById('output').textContent = 'Assembled successfully. Hex length: ' + result.output.length;
+                        window.assembledHex = result.output;
+                    } else {
+                        document.getElementById('output').textContent = result.errors.join('\n');
+                        window.assembledHex = null;
+                    }
+                }
+            });
+
+            // Auto-compile on editor change
+            editor.onDidChangeModelContent(() => {
+                if (autoCompileEnabled) {
+                    const code = editor.getValue();
+                    const result = compile(code, "stdout");
+                    if (result.success) {
+                        document.getElementById('output').textContent = 'Assembled successfully. Hex length: ' + result.output.length;
+                        window.assembledHex = result.output;
+                    } else {
+                        document.getElementById('output').textContent = result.errors.join('\n');
+                        window.assembledHex = null;
+                    }
+                }
+            });
+
+            // Load to VizMachine Memory
+            document.getElementById('loadToMemoryBtn').addEventListener('click', () => {
+                if (!window.assembledHex) {
+                    // Auto-assemble if not already done
+                    const code = editor.getValue();
+                    const result = compile(code, "stdout");
+                    if (!result.success) {
+                        document.getElementById('output').textContent = result.errors.join('\n');
+                        alert('Assembly failed. Check the output panel for errors.');
+                        return;
+                    }
+                    window.assembledHex = result.output;
+                }
+
+                // Post message to parent window to load into memory
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'loadMemory',
+                        hex: window.assembledHex
+                    }, '*');
+                    document.getElementById('output').textContent = 'Loading to VizMachine memory...';
+                } else {
+                    alert('Could not communicate with VizMachine. Make sure the editor is loaded within the main application.');
+                }
+            });
+
             // Add validation function
             function validateCode(model) {
                 const code = model.getValue();

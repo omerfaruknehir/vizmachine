@@ -412,5 +412,16 @@ See LICENSE.txt
 		<script type="text/javascript" src="js/vizgui.js"></script>
 		<script type="text/javascript" src="js/gui.js"></script>
 
+		<!-- Listen for messages from ASM editor iframe -->
+		<script>
+			window.addEventListener('message', function(event) {
+				if (event.data && event.data.type === 'loadMemory') {
+					var scope = angular.element(document.querySelector('[data-ng-app="vizMachine"]')).scope();
+					if (scope && scope.vctrl && scope.vctrl.loadHexToMemory) {
+						scope.vctrl.loadHexToMemory(event.data.hex);
+					}
+				}
+			});
+		</script>
 	</body>
 </html>
